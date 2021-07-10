@@ -3,7 +3,7 @@
 An animation instance representation  
 ```csharp
 public class AnimationInstance :
-IEquatable<AnimationInstance>
+System.IEquatable<UnrealEngine.Framework.AnimationInstance>
 ```
 Inheritance [System.Object](https://docs.microsoft.com/en-us/dotnet/api/System.Object 'System.Object') &#129106; AnimationInstance  
 
@@ -18,6 +18,7 @@ Implements [System.IEquatable&lt;](https://docs.microsoft.com/en-us/dotnet/api/S
 - [GetCurrentActiveMontage()](./AnimationInstance-GetCurrentActiveMontage().md 'UnrealEngine.Framework.AnimationInstance.GetCurrentActiveMontage()')
 - [GetCurrentSection(UnrealEngine.Framework.AnimationMontage)](./AnimationInstance-GetCurrentSection(AnimationMontage).md 'UnrealEngine.Framework.AnimationInstance.GetCurrentSection(UnrealEngine.Framework.AnimationMontage)')
 - [GetDouble(string, double)](./AnimationInstance-GetDouble(string_double).md 'UnrealEngine.Framework.AnimationInstance.GetDouble(string, double)')
+- [GetEnum&lt;T&gt;(string, T)](./AnimationInstance-GetEnum-T-(string_T).md 'UnrealEngine.Framework.AnimationInstance.GetEnum&lt;T&gt;(string, T)')
 - [GetFloat(string, float)](./AnimationInstance-GetFloat(string_float).md 'UnrealEngine.Framework.AnimationInstance.GetFloat(string, float)')
 - [GetHashCode()](./AnimationInstance-GetHashCode().md 'UnrealEngine.Framework.AnimationInstance.GetHashCode()')
 - [GetInt(string, int)](./AnimationInstance-GetInt(string_int).md 'UnrealEngine.Framework.AnimationInstance.GetInt(string, int)')
@@ -25,10 +26,12 @@ Implements [System.IEquatable&lt;](https://docs.microsoft.com/en-us/dotnet/api/S
 - [GetPlayRate(UnrealEngine.Framework.AnimationMontage)](./AnimationInstance-GetPlayRate(AnimationMontage).md 'UnrealEngine.Framework.AnimationInstance.GetPlayRate(UnrealEngine.Framework.AnimationMontage)')
 - [GetPosition(UnrealEngine.Framework.AnimationMontage)](./AnimationInstance-GetPosition(AnimationMontage).md 'UnrealEngine.Framework.AnimationInstance.GetPosition(UnrealEngine.Framework.AnimationMontage)')
 - [GetShort(string, short)](./AnimationInstance-GetShort(string_short).md 'UnrealEngine.Framework.AnimationInstance.GetShort(string, short)')
+- [GetString(string, string)](./AnimationInstance-GetString(string_string).md 'UnrealEngine.Framework.AnimationInstance.GetString(string, string)')
 - [GetText(string, string)](./AnimationInstance-GetText(string_string).md 'UnrealEngine.Framework.AnimationInstance.GetText(string, string)')
 - [GetUInt(string, uint)](./AnimationInstance-GetUInt(string_uint).md 'UnrealEngine.Framework.AnimationInstance.GetUInt(string, uint)')
 - [GetULong(string, ulong)](./AnimationInstance-GetULong(string_ulong).md 'UnrealEngine.Framework.AnimationInstance.GetULong(string, ulong)')
 - [GetUShort(string, ushort)](./AnimationInstance-GetUShort(string_ushort).md 'UnrealEngine.Framework.AnimationInstance.GetUShort(string, ushort)')
+- [Invoke(string)](./AnimationInstance-Invoke(string).md 'UnrealEngine.Framework.AnimationInstance.Invoke(string)')
 - [IsPlaying(UnrealEngine.Framework.AnimationMontage)](./AnimationInstance-IsPlaying(AnimationMontage).md 'UnrealEngine.Framework.AnimationInstance.IsPlaying(UnrealEngine.Framework.AnimationMontage)')
 - [JumpToSection(UnrealEngine.Framework.AnimationMontage, string)](./AnimationInstance-JumpToSection(AnimationMontage_string).md 'UnrealEngine.Framework.AnimationInstance.JumpToSection(UnrealEngine.Framework.AnimationMontage, string)')
 - [JumpToSectionsEnd(UnrealEngine.Framework.AnimationMontage, string)](./AnimationInstance-JumpToSectionsEnd(AnimationMontage_string).md 'UnrealEngine.Framework.AnimationInstance.JumpToSectionsEnd(UnrealEngine.Framework.AnimationMontage, string)')
@@ -38,6 +41,7 @@ Implements [System.IEquatable&lt;](https://docs.microsoft.com/en-us/dotnet/api/S
 - [SetBool(string, bool)](./AnimationInstance-SetBool(string_bool).md 'UnrealEngine.Framework.AnimationInstance.SetBool(string, bool)')
 - [SetByte(string, byte)](./AnimationInstance-SetByte(string_byte).md 'UnrealEngine.Framework.AnimationInstance.SetByte(string, byte)')
 - [SetDouble(string, double)](./AnimationInstance-SetDouble(string_double).md 'UnrealEngine.Framework.AnimationInstance.SetDouble(string, double)')
+- [SetEnum&lt;T&gt;(string, T)](./AnimationInstance-SetEnum-T-(string_T).md 'UnrealEngine.Framework.AnimationInstance.SetEnum&lt;T&gt;(string, T)')
 - [SetFloat(string, float)](./AnimationInstance-SetFloat(string_float).md 'UnrealEngine.Framework.AnimationInstance.SetFloat(string, float)')
 - [SetInt(string, int)](./AnimationInstance-SetInt(string_int).md 'UnrealEngine.Framework.AnimationInstance.SetInt(string, int)')
 - [SetLong(string, long)](./AnimationInstance-SetLong(string_long).md 'UnrealEngine.Framework.AnimationInstance.SetLong(string, long)')
@@ -45,6 +49,7 @@ Implements [System.IEquatable&lt;](https://docs.microsoft.com/en-us/dotnet/api/S
 - [SetPlayRate(UnrealEngine.Framework.AnimationMontage, float)](./AnimationInstance-SetPlayRate(AnimationMontage_float).md 'UnrealEngine.Framework.AnimationInstance.SetPlayRate(UnrealEngine.Framework.AnimationMontage, float)')
 - [SetPosition(UnrealEngine.Framework.AnimationMontage, float)](./AnimationInstance-SetPosition(AnimationMontage_float).md 'UnrealEngine.Framework.AnimationInstance.SetPosition(UnrealEngine.Framework.AnimationMontage, float)')
 - [SetShort(string, short)](./AnimationInstance-SetShort(string_short).md 'UnrealEngine.Framework.AnimationInstance.SetShort(string, short)')
+- [SetString(string, string)](./AnimationInstance-SetString(string_string).md 'UnrealEngine.Framework.AnimationInstance.SetString(string, string)')
 - [SetText(string, string)](./AnimationInstance-SetText(string_string).md 'UnrealEngine.Framework.AnimationInstance.SetText(string, string)')
 - [SetUInt(string, uint)](./AnimationInstance-SetUInt(string_uint).md 'UnrealEngine.Framework.AnimationInstance.SetUInt(string, uint)')
 - [SetULong(string, ulong)](./AnimationInstance-SetULong(string_ulong).md 'UnrealEngine.Framework.AnimationInstance.SetULong(string, ulong)')

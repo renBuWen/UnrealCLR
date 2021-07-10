@@ -1,36 +1,33 @@
 using System;
 using System.Drawing;
 using System.Numerics;
-using System.Reflection;
 using UnrealEngine.Framework;
 
 namespace UnrealEngine.Tests {
-	public static class SpatialQueries {
-		public static void OnBeginPlay() {
-			Debug.AddOnScreenMessage(-1, 3.0f, Color.LightGreen, MethodBase.GetCurrentMethod().DeclaringType + " system started!");
-
+	public class SpatialQueries : ISystem {
+		public void OnBeginPlay() {
 			World.GetFirstPlayerController().SetViewTarget(World.GetActor<Camera>("MainCamera"));
 
 			const float linesThickness = 3.0f;
 			const string collisionProfile = "TestCollisionProfile";
 
-			Actor box = new Actor("Box");
-			StaticMeshComponent staticMeshComponent = new StaticMeshComponent(box, setAsRoot: true);
-			Vector3 boxLocation = new Vector3(0.0f, 500.0f, 0.0f);
-			Vector3 boxScale = new Vector3(1.0f, 1.0f, 1.0f);
+			Actor box = new("Box");
+			StaticMeshComponent staticMeshComponent = new(box, setAsRoot: true);
+			Vector3 boxLocation = new(0.0f, 500.0f, 0.0f);
+			Vector3 boxScale = new(1.0f, 1.0f, 1.0f);
 
 			staticMeshComponent.SetWorldLocation(boxLocation);
 			staticMeshComponent.SetWorldScale(boxScale);
 			staticMeshComponent.SetStaticMesh(StaticMesh.Cube);
 			staticMeshComponent.SetMaterial(0, Material.Load("/Game/Tests/BasicMaterial"));
-			staticMeshComponent.CreateAndSetMaterialInstanceDynamic(0).SetVectorParameterValue("Color", new LinearColor(0.18f, 0.0f, 0.9f));
+			staticMeshComponent.CreateAndSetMaterialInstanceDynamic(0).SetVectorParameterValue("Color", new(0.18f, 0.0f, 0.9f));
 			staticMeshComponent.SetCollisionChannel(CollisionChannel.WorldStatic);
 			staticMeshComponent.SetCollisionProfileName(collisionProfile);
 
 			Debug.DrawBox(boxLocation, boxScale * 50.0f, Quaternion.Identity, Color.SlateBlue, true, thickness: linesThickness);
 
 			Hit hit = default;
-			Vector3 lineTraceStart = new Vector3(0.0f, 0.0f, 0.0f);
+			Vector3 lineTraceStart = new(0.0f, 0.0f, 0.0f);
 
 			bool hitTraceByChannel = World.LineTraceSingleByChannel(lineTraceStart, boxLocation, CollisionChannel.WorldStatic, ref hit);
 
@@ -96,6 +93,6 @@ namespace UnrealEngine.Tests {
 				Debug.AddOnScreenMessage(-1, 15.0f, Color.MediumTurquoise, "Box overlap by profile!");
 		}
 
-		public static void OnEndPlay() => Debug.ClearOnScreenMessages();
+		public void OnEndPlay() => Debug.ClearOnScreenMessages();
 	}
 }

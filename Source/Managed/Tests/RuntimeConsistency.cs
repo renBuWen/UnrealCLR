@@ -5,8 +5,8 @@ using System.Reflection;
 using UnrealEngine.Framework;
 
 namespace UnrealEngine.Tests {
-	public static class RuntimeConsistency {
-		public static void OnBeginPlay() {
+	public class RuntimeConsistency : ISystem {
+		public void OnBeginPlay() {
 			ActorMemoryManagementTest();
 			ComponentMemoryManagementTest();
 			ActorBlueprintClassesMatchingTest();
@@ -18,12 +18,12 @@ namespace UnrealEngine.Tests {
 			Debug.AddOnScreenMessage(-1, 10.0f, Color.MediumTurquoise, "Verify " + MethodBase.GetCurrentMethod().DeclaringType + " results in output log!");
 		}
 
-		private static void ActorMemoryManagementTest() {
+		private void ActorMemoryManagementTest() {
 			Debug.Log(LogLevel.Display, "Starting " + MethodBase.GetCurrentMethod().Name + "...");
 
 			try {
-				Actor actor = new Actor();
-				SceneComponent sceneComponent = new SceneComponent(actor, setAsRoot: true);
+				Actor actor = new();
+				SceneComponent sceneComponent = new(actor, setAsRoot: true);
 
 				actor.Destroy();
 
@@ -38,15 +38,15 @@ namespace UnrealEngine.Tests {
 				return;
 			}
 
-			Debug.Log(LogLevel.Error, "Test failed!");
+			Debug.Log(LogLevel.Error, MethodBase.GetCurrentMethod().Name + " test failed!");
 		}
 
-		private static void ComponentMemoryManagementTest() {
+		private void ComponentMemoryManagementTest() {
 			Debug.Log(LogLevel.Display, "Starting " + MethodBase.GetCurrentMethod().Name + "...");
 
 			try {
-				Actor actor = new Actor();
-				SceneComponent sceneComponent = new SceneComponent(actor, setAsRoot: true);
+				Actor actor = new();
+				SceneComponent sceneComponent = new(actor, setAsRoot: true);
 
 				sceneComponent.Destroy();
 
@@ -61,10 +61,10 @@ namespace UnrealEngine.Tests {
 				return;
 			}
 
-			Debug.Log(LogLevel.Error, "Test failed!");
+			Debug.Log(LogLevel.Error, MethodBase.GetCurrentMethod().Name + " test failed!");
 		}
 
-		private static void ActorBlueprintClassesMatchingTest() {
+		private void ActorBlueprintClassesMatchingTest() {
 			Debug.Log(LogLevel.Display, "Starting " + MethodBase.GetCurrentMethod().Name + "...");
 
 			try {
@@ -72,7 +72,7 @@ namespace UnrealEngine.Tests {
 
 				Debug.Log(LogLevel.Display, "Triggering invalid action after the blueprint loading");
 
-				Actor actor = new Actor(blueprint: blueprintActor);
+				Actor actor = new(blueprint: blueprintActor);
 			}
 
 			catch (Exception exception) {
@@ -81,19 +81,19 @@ namespace UnrealEngine.Tests {
 				return;
 			}
 
-			Debug.Log(LogLevel.Error, "Test failed!");
+			Debug.Log(LogLevel.Error, MethodBase.GetCurrentMethod().Name + " test failed!");
 		}
 
-		private static void ComponentBlueprintClassesMatchingTest() {
+		private void ComponentBlueprintClassesMatchingTest() {
 			Debug.Log(LogLevel.Display, "Starting " + MethodBase.GetCurrentMethod().Name + "...");
 
 			try {
-				Blueprint blueprintComponent = Blueprint.Load("/Game/Tests/BlueprintStaticMeshComponent");
-				Actor actor = new Actor();
+				Blueprint blueprintComponent = Blueprint.Load("/Game/Tests/BlueprintActor");
+				Actor actor = new();
 
 				Debug.Log(LogLevel.Display, "Triggering invalid action after the blueprint loading");
 
-				SceneComponent sceneComponent = new SceneComponent(actor, blueprint: blueprintComponent);
+				SceneComponent sceneComponent = new(actor, blueprint: blueprintComponent);
 			}
 
 			catch (Exception exception) {
@@ -102,17 +102,17 @@ namespace UnrealEngine.Tests {
 				return;
 			}
 
-			Debug.Log(LogLevel.Error, "Test failed!");
+			Debug.Log(LogLevel.Error, MethodBase.GetCurrentMethod().Name + " test failed!");
 		}
 
-		private static void DuplicateActorMemoryManagementTest() {
+		private void DuplicateActorMemoryManagementTest() {
 			Debug.Log(LogLevel.Display, "Starting " + MethodBase.GetCurrentMethod().Name + "...");
 
 			const string actorName = "Player";
 
 			try {
-				Pawn pawn = new Pawn();
-				Pawn namedPawn = new Pawn(actorName);
+				Pawn pawn = new();
+				Pawn namedPawn = new(actorName);
 				Pawn duplicateActor = World.GetActor<Pawn>(actorName);
 
 				if (!namedPawn.Equals(duplicateActor)) {
@@ -135,15 +135,15 @@ namespace UnrealEngine.Tests {
 				return;
 			}
 
-			Debug.Log(LogLevel.Error, "Test failed!");
+			Debug.Log(LogLevel.Error, MethodBase.GetCurrentMethod().Name + " test failed!");
 		}
 
-		private static void DuplicateComponentMemoryManagementTest() {
+		private void DuplicateComponentMemoryManagementTest() {
 			Debug.Log(LogLevel.Display, "Starting " + MethodBase.GetCurrentMethod().Name + "...");
 
 			try {
-				Actor actor = new Actor();
-				SceneComponent sceneComponent = new SceneComponent(actor, setAsRoot: true);
+				Actor actor = new();
+				SceneComponent sceneComponent = new(actor, setAsRoot: true);
 				SceneComponent duplicateReference = actor.GetRootComponent<SceneComponent>();
 
 				if (!sceneComponent.Equals(duplicateReference)) {
@@ -166,10 +166,10 @@ namespace UnrealEngine.Tests {
 				return;
 			}
 
-			Debug.Log(LogLevel.Error, "Test failed!");
+			Debug.Log(LogLevel.Error, MethodBase.GetCurrentMethod().Name + " test failed!");
 		}
 
-		private static void ConsoleVariablesMemoryManagementTest() {
+		private void ConsoleVariablesMemoryManagementTest() {
 			Debug.Log(LogLevel.Display, "Starting " + MethodBase.GetCurrentMethod().Name + "...");
 
 			const string variableName = "TestVariable";
@@ -196,7 +196,7 @@ namespace UnrealEngine.Tests {
 				return;
 			}
 
-			Debug.Log(LogLevel.Error, "Test failed!");
+			Debug.Log(LogLevel.Error, MethodBase.GetCurrentMethod().Name + " test failed!");
 		}
 	}
 }

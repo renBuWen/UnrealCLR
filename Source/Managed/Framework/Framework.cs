@@ -1,18 +1,28 @@
 /*
- * Copyright (c) 2020 Stanislav Denisov (nxrighthere@gmail.com)
+ *  Unreal Engine .NET 5 integration 
+ *  Copyright (c) 2021 Stanislav Denisov
  *
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the GNU Lesser General Public License
- * (LGPL) version 3 with a static linking exception which accompanies this
- * distribution.
+ *  Permission is hereby granted, free of charge, to any person obtaining a copy
+ *  of this software and associated documentation files (the "Software"), to deal
+ *  in the Software without restriction, including without limitation the rights
+ *  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ *  copies of the Software, and to permit persons to whom the Software is
+ *  furnished to do so, subject to the following conditions:
  *
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
+ *  The above copyright notice and this permission notice shall be included in all
+ *  copies or substantial portions of the Software.
+ *
+ *  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ *  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ *  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ *  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ *  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ *  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ *  SOFTWARE.
  */
 
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
 using System.Globalization;
@@ -27,44 +37,106 @@ using System.Text;
 namespace UnrealEngine.Framework {
 	// Internal
 
-	internal static class Path {
-		private static string project;
-
-		// Determines the path of the project by parsing assembly location
-		internal static string Project {
-			get {
-				if (project == null) {
-					project = Assembly.GetExecutingAssembly().Location;
-					project = project.Substring(0, project.IndexOf("Managed", StringComparison.CurrentCulture));
-				}
-
-				return project;
-			}
-		}
-	}
-
 	internal static class ArrayPool {
 		[ThreadStatic]
 		private static byte[] stringBuffer;
 
 		public static byte[] GetStringBuffer() {
 			if (stringBuffer == null)
-				stringBuffer = new byte[8192];
+				stringBuffer = GC.AllocateUninitializedArray<byte>(8192, pinned: true);
 
 			return stringBuffer;
 		}
 	}
 
+	internal static class Collector {
+		[ThreadStatic]
+		private static List<object> references;
+
+		public static IntPtr GetFunctionPointer(Delegate reference) {
+			if (references == null)
+				references = new();
+
+			references.Add(reference);
+
+			return Marshal.GetFunctionPointerForDelegate(reference);
+		}
+	}
+
 	internal static class Extensions {
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		internal static string TrimFromZero(this string input) {
-			int index = input.IndexOf('\0', StringComparison.CurrentCulture);
+		internal static T GetOrAdd<S, T>(this IDictionary<S, T> dictionary, S key, Func<T> valueCreator) => dictionary.TryGetValue(key, out var value) ? value : dictionary[key] = valueCreator();
 
-			if (index < 0)
-				return input;
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		internal static string BytesToString(this byte[] buffer) {
+			int end;
 
-			return input.Substring(0, index);
+			for (end = 0; end < buffer.Length && buffer[end] != 0; end++);
+
+			unsafe {
+				fixed (byte* pinnedBuffer = buffer) {
+					return new((sbyte*)pinnedBuffer, 0, end);
+				}
+			}
 		}
+	}
+
+	internal static class Tables {
+		// Table for fast conversion from the color to a linear color
+		internal static readonly float[] Color = new float[256] {
+			0.0f,
+			0.000303526983548838f, 0.000607053967097675f, 0.000910580950646512f, 0.00121410793419535f, 0.00151763491774419f,
+			0.00182116190129302f, 0.00212468888484186f, 0.0024282158683907f, 0.00273174285193954f, 0.00303526983548838f,
+			0.00334653564113713f, 0.00367650719436314f, 0.00402471688178252f, 0.00439144189356217f, 0.00477695332960869f,
+			0.005181516543916f, 0.00560539145834456f, 0.00604883284946662f, 0.00651209061157708f, 0.00699540999852809f,
+			0.00749903184667767f, 0.00802319278093555f, 0.0085681254056307f, 0.00913405848170623f, 0.00972121709156193f,
+			0.0103298227927056f, 0.0109600937612386f, 0.0116122449260844f, 0.012286488094766f, 0.0129830320714536f,
+			0.0137020827679224f, 0.0144438433080002f, 0.0152085141260192f, 0.0159962930597398f, 0.0168073754381669f,
+			0.0176419541646397f, 0.0185002197955389f, 0.0193823606149269f, 0.0202885627054049f, 0.0212190100154473f,
+			0.0221738844234532f, 0.02315336579873f, 0.0241576320596103f, 0.0251868592288862f, 0.0262412214867272f,
+			0.0273208912212394f, 0.0284260390768075f, 0.0295568340003534f, 0.0307134432856324f, 0.0318960326156814f,
+			0.0331047661035236f, 0.0343398063312275f, 0.0356013143874111f, 0.0368894499032755f, 0.0382043710872463f,
+			0.0395462347582974f, 0.0409151963780232f, 0.0423114100815264f, 0.0437350287071788f, 0.0451862038253117f,
+			0.0466650857658898f, 0.0481718236452158f, 0.049706565391714f, 0.0512694577708345f, 0.0528606464091205f,
+			0.0544802758174765f, 0.0561284894136735f, 0.0578054295441256f, 0.0595112375049707f, 0.0612460535624849f,
+			0.0630100169728596f, 0.0648032660013696f, 0.0666259379409563f, 0.0684781691302512f, 0.070360094971063f,
+			0.0722718499453493f, 0.0742135676316953f, 0.0761853807213167f, 0.0781874210336082f, 0.0802198195312533f,
+			0.0822827063349132f, 0.0843762107375113f, 0.0865004612181274f, 0.0886555854555171f, 0.0908417103412699f,
+			0.0930589619926197f, 0.0953074657649191f, 0.0975873462637915f, 0.0998987273569704f, 0.102241732185838f,
+			0.104616483176675f, 0.107023102051626f, 0.109461709839399f, 0.1119324268857f, 0.114435372863418f,
+			0.116970666782559f, 0.119538426999953f, 0.122138771228724f, 0.124771816547542f, 0.127437679409664f,
+			0.130136475651761f, 0.132868320502552f, 0.135633328591233f, 0.138431613955729f, 0.141263290050755f,
+			0.144128469755705f, 0.147027265382362f, 0.149959788682454f, 0.152926150855031f, 0.155926462553701f,
+			0.158960833893705f, 0.162029374458845f, 0.16513219330827f, 0.168269398983119f, 0.171441099513036f,
+			0.174647402422543f, 0.17788841473729f, 0.181164242990184f, 0.184474993227387f, 0.187820771014205f,
+			0.191201681440861f, 0.194617829128147f, 0.198069318232982f, 0.201556252453853f, 0.205078735036156f,
+			0.208636868777438f, 0.212230756032542f, 0.215860498718652f, 0.219526198320249f, 0.223227955893977f,
+			0.226965872073417f, 0.23074004707378f, 0.23455058069651f, 0.238397572333811f, 0.242281120973093f,
+			0.246201325201334f, 0.250158283209375f, 0.254152092796134f, 0.258182851372752f, 0.262250655966664f,
+			0.266355603225604f, 0.270497789421545f, 0.274677310454565f, 0.278894261856656f, 0.283148738795466f,
+			0.287440836077983f, 0.291770648154158f, 0.296138269120463f, 0.300543792723403f, 0.304987312362961f,
+			0.309468921095997f, 0.313988711639584f, 0.3185467763743f, 0.323143207347467f, 0.32777809627633f,
+			0.332451534551205f, 0.337163613238559f, 0.341914423084057f, 0.346704054515559f, 0.351532597646068f,
+			0.356400142276637f, 0.361306777899234f, 0.36625259369956f, 0.371237678559833f, 0.376262121061519f,
+			0.381326009488037f, 0.386429431827418f, 0.39157247577492f, 0.396755228735618f, 0.401977777826949f,
+			0.407240209881218f, 0.41254261144808f, 0.417885068796976f, 0.423267667919539f, 0.428690494531971f,
+			0.434153634077377f, 0.439657171728079f, 0.445201192387887f, 0.450785780694349f, 0.456411021020965f,
+			0.462076997479369f, 0.467783793921492f, 0.473531493941681f, 0.479320180878805f, 0.485149937818323f,
+			0.491020847594331f, 0.496932992791578f, 0.502886455747457f, 0.50888131855397f, 0.514917663059676f,
+			0.520995570871595f, 0.527115123357109f, 0.533276401645826f, 0.539479486631421f, 0.545724458973463f,
+			0.552011399099209f, 0.558340387205378f, 0.56471150325991f, 0.571124827003694f, 0.577580437952282f,
+			0.584078415397575f, 0.590618838409497f, 0.597201785837643f, 0.603827336312907f, 0.610495568249093f,
+			0.617206559844509f, 0.623960389083534f, 0.630757133738175f, 0.637596871369601f, 0.644479679329661f,
+			0.651405634762384f, 0.658374814605461f, 0.665387295591707f, 0.672443154250516f, 0.679542466909286f,
+			0.686685309694841f, 0.693871758534824f, 0.701101889159085f, 0.708375777101046f, 0.71569349769906f,
+			0.723055126097739f, 0.730460737249286f, 0.737910405914797f, 0.745404206665559f, 0.752942213884326f,
+			0.760524501766589f, 0.768151144321824f, 0.775822215374732f, 0.783537788566466f, 0.791297937355839f,
+			0.799102735020525f, 0.806952254658248f, 0.81484656918795f, 0.822785751350956f, 0.830769873712124f,
+			0.838799008660978f, 0.846873228412837f, 0.854992605009927f, 0.863157210322481f, 0.871367116049835f,
+			0.879622393721502f, 0.887923114698241f, 0.896269350173118f, 0.904661171172551f, 0.913098648557343f,
+			0.921581853023715f, 0.930110855104312f, 0.938685725169219f, 0.947306533426946f, 0.955973349925421f,
+			0.964686244552961f, 0.973445287039244f, 0.982250546956257f, 0.991102093719252f, 1.0f
+		};
 	}
 
 	// Public
@@ -130,7 +202,7 @@ namespace UnrealEngine.Framework {
 	/// <summary>
 	/// Defines teleportation types of physics body
 	/// </summary>
-	public enum TeleportType : int {
+	public enum TeleportType : byte {
 		/// <summary>
 		/// Don't teleport physics body
 		/// </summary>
@@ -197,7 +269,23 @@ namespace UnrealEngine.Framework {
 		/// <summary>
 		/// Called when actors hit collisions
 		/// </summary>
-		OnActorHit
+		OnActorHit,
+		/// <summary>
+		/// Called when the mouse cursor is moved over an actor if mouse over events are enabled in the player controller
+		/// </summary>
+		OnActorBeginCursorOver,
+		/// <summary>
+		/// Called when the mouse cursor is moved off an actor if mouse over events are enabled in the player controller
+		/// </summary>
+		OnActorEndCursorOver,
+		/// <summary>
+		/// Called when the mouse button is clicked while the mouse is over an actor if click events are enabled in the player controller
+		/// </summary>
+		OnActorClicked,
+		/// <summary>
+		/// Called when the mouse button is released while the mouse is over an actor if click events are enabled in the player controller
+		/// </summary>
+		OnActorReleased
 	}
 
 	/// <summary>
@@ -215,7 +303,23 @@ namespace UnrealEngine.Framework {
 		/// <summary>
 		/// Called when components hit collisions
 		/// </summary>
-		OnComponentHit
+		OnComponentHit,
+		/// <summary>
+		/// Called when the mouse cursor is moved over a component and mouse over events are enabled in the player controller
+		/// </summary>
+		OnComponentBeginCursorOver,
+		/// <summary>
+		/// Called when the mouse cursor is moved off a component and mouse over events are enabled in the player controller
+		/// </summary>
+		OnComponentEndCursorOver,
+		/// <summary>
+		/// Called when the mouse button is clicked while the mouse is over a component if click events are enabled in the player controller
+		/// </summary>
+		OnComponentClicked,
+		/// <summary>
+		/// Called when the mouse button is released while the mouse is over a component if click events are enabled in the player controller
+		/// </summary>
+		OnComponentReleased
 	}
 
 	/// <summary>
@@ -228,6 +332,30 @@ namespace UnrealEngine.Framework {
 		Asset,
 		/// <summary/>
 		Custom
+	}
+
+	/// <summary>
+	/// Defines the player index that will be used to pass input
+	/// </summary>
+	public enum AutoReceiveInput : int {
+		/// <summary/>
+		Disabled,
+		/// <summary/>
+		Player0,
+		/// <summary/>
+		Player1,
+		/// <summary/>
+		Player2,
+		/// <summary/>
+		Player3,
+		/// <summary/>
+		Player4,
+		/// <summary/>
+		Player5,
+		/// <summary/>
+		Player6,
+		/// <summary/>
+		Player7
 	}
 
 	/// <summary>
@@ -295,6 +423,32 @@ namespace UnrealEngine.Framework {
 	}
 
 	/// <summary>
+	/// Defines coordinate space
+	/// </summary>
+	public enum SplineCoordinateSpace : int {
+		/// <summary/>
+		Local,
+		/// <summary/>
+		World
+	}
+
+	/// <summary>
+	/// Defines the spline point type
+	/// </summary>
+	public enum SplinePointType : int {
+		/// <summary/>
+		Linear,
+		/// <summary/>
+		Curve,
+		/// <summary/>
+		Constant,
+		/// <summary/>
+		CurveClamped,
+		/// <summary/>
+		CurveCustomTangent
+	}
+
+	/// <summary>
 	/// Defines the window mode
 	/// </summary>
 	public enum WindowMode : int {
@@ -321,6 +475,28 @@ namespace UnrealEngine.Framework {
 	}
 
 	/// <summary>
+	/// Defines the possession type for AI pawn that will be automatically possed by an AI controller
+	/// </summary>
+	public enum AutoPossessAI : byte {
+		/// <summary>
+		/// Disabled and not possesses AI
+		/// </summary>
+		Disabled,
+		/// <summary>
+		/// Only possess by an AI controller if a pawn is placed in the world
+		/// </summary>
+		PlacedInWorld,
+		/// <summary>
+		/// Only possess by an AI controller if a pawn is spawned after the world has loaded
+		/// </summary>
+		Spawned,
+		/// <summary>
+		/// Pawn is automatically possessed by an AI controller whenever it's created
+		/// </summary>
+		PlacedInWorldOrSpawned
+	}
+
+	/// <summary>
 	/// Defines how to blend when changing view targets
 	/// </summary>
 	public enum BlendType : int {
@@ -343,7 +519,11 @@ namespace UnrealEngine.Framework {
 		/// <summary>
 		/// Smoothly accelerates and decelerates, ease amount can be controlled
 		/// </summary>
-		EaseInOut
+		EaseInOut,
+		/// <summary>
+		/// The game's camera system has already performed the blending, the engine shouldn't blend at all
+		/// </summary>
+		PreBlended
 	}
 
 	/// <summary>
@@ -469,6 +649,30 @@ namespace UnrealEngine.Framework {
 	}
 
 	/// <summary>
+	/// Defines the horizontal text aligment type
+	/// </summary>
+	public enum HorizontalTextAligment : int {
+		/// <summary/>
+		Left,
+		/// <summary/>
+		Center,
+		/// <summary/>
+		Right
+	}
+
+	/// <summary>
+	/// Defines the vertical text aligment type
+	/// </summary>
+	public enum VerticalTextAligment : int {
+		/// <summary/>
+		Top,
+		/// <summary/>
+		Center,
+		/// <summary/>
+		Bottom
+	}
+
+	/// <summary>
 	/// Defines input behavior type
 	/// </summary>
 	public enum InputEvent : int {
@@ -517,10 +721,160 @@ namespace UnrealEngine.Framework {
 	}
 
 	/// <summary>
+	/// Defines the pixel format
+	/// </summary>
+	public enum PixelFormat : int {
+		/// <summary/>
+		Unknown = 0,
+		/// <summary/>
+		A32B32G32R32F = 1,
+		/// <summary/>
+		B8G8R8A8 = 2,
+		/// <summary/>
+		G8 = 3,
+		/// <summary/>
+		G16 = 4,
+		/// <summary/>
+		DXT1 = 5,
+		/// <summary/>
+		DXT3 = 6,
+		/// <summary/>
+		DXT5 = 7,
+		/// <summary/>
+		UYVY = 8,
+		/// <summary/>
+		FloatRGB = 9,
+		/// <summary/>
+		FloatRGBA = 10,
+		/// <summary/>
+		DepthStencil = 11,
+		/// <summary/>
+		ShadowDepth = 12,
+		/// <summary/>
+		R32Float = 13,
+		/// <summary/>
+		G16R16 = 14,
+		/// <summary/>
+		G16R16F = 15,
+		/// <summary/>
+		G16R16FFilter = 16,
+		/// <summary/>
+		G32R32F = 17,
+		/// <summary/>
+		A2B10G10R10 = 18,
+		/// <summary/>
+		A16B16G16R16 = 19,
+		/// <summary/>
+		D24 = 20,
+		/// <summary/>
+		R16F = 21,
+		/// <summary/>
+		R16FFilter = 22,
+		/// <summary/>
+		BC5 = 23,
+		/// <summary/>
+		V8U8 = 24,
+		/// <summary/>
+		A1 = 25,
+		/// <summary/>
+		FloatR11G11B10 = 26,
+		/// <summary/>
+		A8 = 27,
+		/// <summary/>
+		R32UInt = 28,
+		/// <summary/>
+		R32SInt = 29,
+		/// <summary/>
+		PVRTC2 = 30,
+		/// <summary/>
+		PVRTC4 = 31,
+		/// <summary/>
+		R16UInt = 32,
+		/// <summary/>
+		R16SInt = 33,
+		/// <summary/>
+		R16G16B16A16UInt = 34,
+		/// <summary/>
+		R16G16B16A16SInt = 35,
+		/// <summary/>
+		R5G6B5UNorm = 36,
+		/// <summary/>
+		R8G8B8A8 = 37,
+		/// <summary/>
+		A8R8G8B8 = 38,
+		/// <summary/>
+		BC4 = 39,
+		/// <summary/>
+		R8G8 = 40,
+		/// <summary/>
+		ATCRGB = 41,
+		/// <summary/>
+		ATCRGBAE = 42,
+		/// <summary/>
+		ATCRGBAI = 43,
+		/// <summary/>
+		X24G8 = 44,
+		/// <summary/>
+		ETC1 = 45,
+		/// <summary/>
+		ETC2RGB = 46,
+		/// <summary/>
+		ETC2RGBA = 47,
+		/// <summary/>
+		R32G32B32A32UInt = 48,
+		/// <summary/>
+		R16G16UInt = 49,
+		/// <summary/>
+		ASTC4x4 = 50,
+		/// <summary/>
+		ASTC6x6 = 51,
+		/// <summary/>
+		ASTC8x8 = 52,
+		/// <summary/>
+		ASTC10x10 = 53,
+		/// <summary/>
+		ASTC12x12 = 54,
+		/// <summary/>
+		BC6H = 55,
+		/// <summary/>
+		BC7 = 56,
+		/// <summary/>
+		R8UInt = 57,
+		/// <summary/>
+		L8 = 58,
+		/// <summary/>
+		XGXR8 = 59,
+		/// <summary/>
+		R8G8B8A8UInt = 60,
+		/// <summary/>
+		R8G8B8A8SNorm = 61,
+		/// <summary/>
+		R16G16B16A16UNorm = 62,
+		/// <summary/>
+		R16G16B16A16SNorm = 63,
+		/// <summary/>
+		PLATFORMHDR0 = 64,
+		/// <summary/>
+		PLATFORMHDR1 = 65,
+		/// <summary/>
+		PLATFORMHDR2 = 66,
+		/// <summary/>
+		NV12 = 67,
+		/// <summary/>
+		R32G32UInt = 68,
+		/// <summary/>
+		ETC2R11EAC = 69,
+		/// <summary/>
+		ETC2RG11EAC = 70,
+		/// <summary/>
+		R8 = 71
+	}
+
+	/// <summary>
 	/// A representation of the engine's object reference
 	/// </summary>
 	[StructLayout(LayoutKind.Sequential)]
-	public struct ObjectReference : IEquatable<ObjectReference> {
+	public unsafe struct ObjectReference : IEquatable<ObjectReference> {
 		private IntPtr pointer;
 
 		internal IntPtr Pointer {
@@ -568,7 +922,7 @@ namespace UnrealEngine.Framework {
 
 				Object.getName(Pointer, stringBuffer);
 
-				return Encoding.UTF8.GetString(stringBuffer).TrimFromZero();
+				return stringBuffer.BytesToString();
 			}
 		}
 
@@ -631,9 +985,202 @@ namespace UnrealEngine.Framework {
 	}
 
 	/// <summary>
-	/// A linear 32-bit floating-point RGBA color
+	/// A representation of the engine's actor reference
 	/// </summary>
 	[StructLayout(LayoutKind.Sequential)]
+	public unsafe struct ActorReference : IEquatable<ActorReference> {
+		private IntPtr pointer;
+
+		internal IntPtr Pointer {
+			get {
+				if (!IsSpawned)
+					throw new InvalidOperationException();
+
+				return pointer;
+			}
+
+			set {
+				if (value == IntPtr.Zero)
+					throw new InvalidOperationException();
+
+				pointer = value;
+			}
+		}
+
+		/// <summary>
+		/// Tests for equality between two objects
+		/// </summary>
+		public static bool operator ==(ActorReference left, ActorReference right) => left.Equals(right);
+
+		/// <summary>
+		/// Tests for inequality between two objects
+		/// </summary>
+		public static bool operator !=(ActorReference left, ActorReference right) => !left.Equals(right);
+
+		/// <summary>
+		/// Returns <c>true</c> if the actor is spawned
+		/// </summary>
+		public bool IsSpawned => pointer != IntPtr.Zero && !Object.isPendingKill(pointer);
+
+		/// <summary>
+		/// Returns the unique ID of the object, reused by the engine, only unique while the object is alive
+		/// </summary>
+		public uint ID => Object.getID(Pointer);
+
+		/// <summary>
+		/// Returns the name of the object
+		/// </summary>
+		public string Name {
+			get {
+				byte[] stringBuffer = ArrayPool.GetStringBuffer();
+
+				Object.getName(Pointer, stringBuffer);
+
+				return stringBuffer.BytesToString();
+			}
+		}
+
+		/// <summary>
+		/// Indicates equality of objects
+		/// </summary>
+		public bool Equals(ActorReference other) => IsSpawned && pointer == other.pointer;
+
+		/// <summary>
+		/// Indicates equality of objects
+		/// </summary>
+		public override bool Equals(object value) {
+			if (value == null)
+				return false;
+
+			if (!ReferenceEquals(value.GetType(), typeof(ActorReference)))
+				return false;
+
+			return Equals((ActorReference)value);
+		}
+
+		/// <summary>
+		/// Returns a hash code for the object
+		/// </summary>
+		public override int GetHashCode() => pointer.GetHashCode();
+
+		/// <summary>
+		/// Converts the actor reference to the actor of the specified class
+		/// </summary>
+		/// <returns>An actor or <c>null</c> on failure</returns>
+		public T ToActor<T>() where T : Actor {
+			T actor = FormatterServices.GetUninitializedObject(typeof(T)) as T;
+			IntPtr pointer = Object.toActor(Pointer, actor.Type);
+
+			if (pointer != IntPtr.Zero) {
+				actor.Pointer = pointer;
+
+				return actor;
+			}
+
+			return null;
+		}
+	}
+
+	/// <summary>
+	/// A representation of the engine's component reference
+	/// </summary>
+	[StructLayout(LayoutKind.Sequential)]
+	public unsafe struct ComponentReference : IEquatable<ComponentReference> {
+		private IntPtr pointer;
+
+		internal IntPtr Pointer {
+			get {
+				if (!IsCreated)
+					throw new InvalidOperationException();
+
+				return pointer;
+			}
+
+			set {
+				if (value == IntPtr.Zero)
+					throw new InvalidOperationException();
+
+				pointer = value;
+			}
+		}
+
+		/// <summary>
+		/// Tests for equality between two objects
+		/// </summary>
+		public static bool operator ==(ComponentReference left, ComponentReference right) => left.Equals(right);
+
+		/// <summary>
+		/// Tests for inequality between two objects
+		/// </summary>
+		public static bool operator !=(ComponentReference left, ComponentReference right) => !left.Equals(right);
+
+		/// <summary>
+		/// Returns <c>true</c> if the object is created
+		/// </summary>
+		public bool IsCreated => pointer != IntPtr.Zero && Object.isValid(pointer);
+
+		/// <summary>
+		/// Returns the unique ID of the object, reused by the engine, only unique while the object is alive
+		/// </summary>
+		public uint ID => Object.getID(Pointer);
+
+		/// <summary>
+		/// Returns the name of the object
+		/// </summary>
+		public string Name {
+			get {
+				byte[] stringBuffer = ArrayPool.GetStringBuffer();
+
+				Object.getName(Pointer, stringBuffer);
+
+				return stringBuffer.BytesToString();
+			}
+		}
+
+		/// <summary>
+		/// Indicates equality of objects
+		/// </summary>
+		public bool Equals(ComponentReference other) => IsCreated && pointer == other.pointer;
+
+		/// <summary>
+		/// Indicates equality of objects
+		/// </summary>
+		public override bool Equals(object value) {
+			if (value == null)
+				return false;
+
+			if (!ReferenceEquals(value.GetType(), typeof(ComponentReference)))
+				return false;
+
+			return Equals((ComponentReference)value);
+		}
+
+		/// <summary>
+		/// Returns a hash code for the object
+		/// </summary>
+		public override int GetHashCode() => pointer.GetHashCode();
+
+		/// <summary>
+		/// Converts the component reference to the component of the specified class
+		/// </summary>
+		/// <returns>A component or <c>null</c> on failure</returns>
+		public T ToComponent<T>() where T : ActorComponent {
+			T component = FormatterServices.GetUninitializedObject(typeof(T)) as T;
+			IntPtr pointer = Object.toComponent(Pointer, component.Type);
+
+			if (pointer != IntPtr.Zero) {
+				component.Pointer = pointer;
+
+				return component;
+			}
+
+			return null;
+		}
+	}
+
+	/// <summary>
+	/// A linear 32-bit floating-point RGBA color
+	/// </summary>
 	public partial struct LinearColor : IEquatable<LinearColor> {
 		/// <summary>
 		/// Initializes a new instance the linear color
@@ -663,6 +1210,16 @@ namespace UnrealEngine.Framework {
 			g = value.Y;
 			b = value.Z;
 			a = value.W;
+		}
+
+		/// <summary>
+		/// Initializes a new instance the linear color
+		/// </summary>
+		public LinearColor(Color value) {
+			r = Tables.Color[value.R];
+			g = Tables.Color[value.G];
+			b = Tables.Color[value.B];
+			a = Tables.Color[value.A];
 		}
 
 		/// <summary>
@@ -708,7 +1265,7 @@ namespace UnrealEngine.Framework {
 		}
 
 		/// <summary>
-		/// Gets or sets the red component of the color
+		/// Gets or sets the red component of the linear color
 		/// </summary>
 		public float R {
 			get => r;
@@ -716,7 +1273,7 @@ namespace UnrealEngine.Framework {
 		}
 
 		/// <summary>
-		/// Gets or sets the green component of the color
+		/// Gets or sets the green component of the linear color
 		/// </summary>
 		public float G {
 			get => g;
@@ -724,7 +1281,7 @@ namespace UnrealEngine.Framework {
 		}
 
 		/// <summary>
-		/// Gets or sets the blue component of the color
+		/// Gets or sets the blue component of the linear color
 		/// </summary>
 		public float B {
 			get => b;
@@ -732,7 +1289,7 @@ namespace UnrealEngine.Framework {
 		}
 
 		/// <summary>
-		/// Gets or sets the alpha component of the color
+		/// Gets or sets the alpha component of the linear color
 		/// </summary>
 		public float A {
 			get => a;
@@ -742,37 +1299,37 @@ namespace UnrealEngine.Framework {
 		/// <summary>
 		/// The black color
 		/// </summary>
-		public static LinearColor Black => new LinearColor(0.0f, 0.0f, 0.0f, 1.0f);
+		public static LinearColor Black => new(0.0f, 0.0f, 0.0f, 1.0f);
 
 		/// <summary>
 		/// The blue color
 		/// </summary>
-		public static LinearColor Blue => new LinearColor(0.0f, 0.0f, 1.0f, 1.0f);
+		public static LinearColor Blue => new(0.0f, 0.0f, 1.0f, 1.0f);
 
 		/// <summary>
 		/// The green color
 		/// </summary>
-		public static LinearColor Green => new LinearColor(0.0f, 1.0f, 0.0f, 1.0f);
+		public static LinearColor Green => new(0.0f, 1.0f, 0.0f, 1.0f);
 
 		/// <summary>
 		/// The grey color
 		/// </summary>
-		public static LinearColor Grey => new LinearColor(0.5f, 0.5f, 0.5f, 1.0f);
+		public static LinearColor Grey => new(0.5f, 0.5f, 0.5f, 1.0f);
 
 		/// <summary>
 		/// The red color
 		/// </summary>
-		public static LinearColor Red => new LinearColor(1.0f, 0.0f, 0.0f, 1.0f);
+		public static LinearColor Red => new(1.0f, 0.0f, 0.0f, 1.0f);
 
 		/// <summary>
 		/// The white color
 		/// </summary>
-		public static LinearColor White => new LinearColor(1.0f, 1.0f, 1.0f, 1.0f);
+		public static LinearColor White => new(1.0f, 1.0f, 1.0f, 1.0f);
 
 		/// <summary>
 		/// The yellow color
 		/// </summary>
-		public static LinearColor Yellow => new LinearColor(1.0f, 1.0f, 0.0f, 1.0f);
+		public static LinearColor Yellow => new(1.0f, 1.0f, 0.0f, 1.0f);
 
 		/// <summary>
 		/// Tests for equality between two objects
@@ -787,22 +1344,27 @@ namespace UnrealEngine.Framework {
 		/// <summary>
 		/// Adds two colors
 		/// </summary>
-		public static LinearColor operator +(LinearColor left, LinearColor right) => new LinearColor(left.r + right.r, left.g + right.g, left.b + right.b, left.a + right.a);
+		public static LinearColor operator +(LinearColor left, LinearColor right) => new(left.r + right.r, left.g + right.g, left.b + right.b, left.a + right.a);
 
 		/// <summary>
 		/// Subtracts two colors
 		/// </summary>
-		public static LinearColor operator -(LinearColor left, LinearColor right) => new LinearColor(left.b - right.b, left.g - right.g, left.b - right.b, left.a - right.a);
+		public static LinearColor operator -(LinearColor left, LinearColor right) => new(left.b - right.b, left.g - right.g, left.b - right.b, left.a - right.a);
 
 		/// <summary>
 		/// Multiplies two colors
 		/// </summary>
-		public static LinearColor operator *(float scale, LinearColor value) => new LinearColor(value.r * scale, value.g * scale, value.b * scale, value.a * scale);
+		public static LinearColor operator *(float scale, LinearColor value) => new(value.r * scale, value.g * scale, value.b * scale, value.a * scale);
 
 		/// <summary>
 		/// Divides two colors
 		/// </summary>
-		public static LinearColor operator /(float scale, LinearColor value) => new LinearColor(value.r / scale, value.g / scale, value.b / scale, value.a / scale);
+		public static LinearColor operator /(float scale, LinearColor value) => new(value.r / scale, value.g / scale, value.b / scale, value.a / scale);
+
+		/// <summary>
+		/// Implicitly casts color instance to a linear color
+		/// </summary>
+		public static implicit operator LinearColor(Color value) => new(value);
 
 		/// <summary>
 		/// Implicitly casts this instance to a string
@@ -813,44 +1375,49 @@ namespace UnrealEngine.Framework {
 		/// Adds two colors
 		/// </summary>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public static LinearColor Add(LinearColor left, LinearColor right) => new LinearColor(left.r + right.r, left.g + right.g, left.b + right.b, left.a + right.a);
+		public static LinearColor Add(LinearColor left, LinearColor right) => new(left.r + right.r, left.g + right.g, left.b + right.b, left.a + right.a);
 
 		/// <summary>
 		/// Subtracts two colors
 		/// </summary>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public static LinearColor Subtract(LinearColor left, LinearColor right) => new LinearColor(left.r - right.r, left.g - right.g, left.b - right.b, left.a - right.a);
+		public static LinearColor Subtract(LinearColor left, LinearColor right) => new(left.r - right.r, left.g - right.g, left.b - right.b, left.a - right.a);
 
 		/// <summary>
 		/// Multiplies two colors
 		/// </summary>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public static LinearColor Multiply(LinearColor left, LinearColor right) => new LinearColor(left.r * right.r, left.g * right.g, left.b * right.b, left.a * right.a);
+		public static LinearColor Multiply(LinearColor left, LinearColor right) => new(left.r * right.r, left.g * right.g, left.b * right.b, left.a * right.a);
 
 		/// <summary>
 		/// Divides two colors
 		/// </summary>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public static LinearColor Divide(LinearColor left, LinearColor right) => new LinearColor(left.r / right.r, left.g / right.g, left.b / right.b, left.a / right.a);
+		public static LinearColor Divide(LinearColor left, LinearColor right) => new(left.r / right.r, left.g / right.g, left.b / right.b, left.a / right.a);
 
 		/// <summary>
 		/// Performs a linear interpolation between two colors
 		/// </summary>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public static LinearColor Lerp(LinearColor start, LinearColor end, float amount) => new LinearColor(Maths.Lerp(start.r, end.r, amount), Maths.Lerp(start.g, end.g, amount), Maths.Lerp(start.b, end.b, amount), Maths.Lerp(start.a, end.a, amount));
+		public static LinearColor Lerp(LinearColor start, LinearColor end, float amount) => new(Maths.Lerp(start.r, end.r, amount), Maths.Lerp(start.g, end.g, amount), Maths.Lerp(start.b, end.b, amount), Maths.Lerp(start.a, end.a, amount));
 
 		/// <summary>
-		/// Converts the color into a three component vector
+		/// Converts the color into a linear color
 		/// </summary>
-		public Vector3 ToVector3() => new Vector3(r, g, b);
+		public static LinearColor FromColor(Color value) => new(value);
 
 		/// <summary>
-		/// Converts the color into a four component vector
+		/// Converts the linear color into a three component vector
 		/// </summary>
-		public Vector4 ToVector4() => new Vector4(r, g, b, a);
+		public Vector3 ToVector3() => new(r, g, b);
 
 		/// <summary>
-		/// Creates an array containing the elements of the color
+		/// Converts the linear color into a four component vector
+		/// </summary>
+		public Vector4 ToVector4() => new(r, g, b, a);
+
+		/// <summary>
+		/// Creates an array containing the elements of the linear color
 		/// </summary>
 		public float[] ToArray() => new[] { r, g, b, a };
 
@@ -891,7 +1458,6 @@ namespace UnrealEngine.Framework {
 	/// <summary>
 	/// Transform composed of location, rotation, and scale
 	/// </summary>
-	[StructLayout(LayoutKind.Sequential)]
 	public partial struct Transform : IEquatable<Transform> {
 		/// <summary>
 		/// Initializes a new instance the transform
@@ -978,50 +1544,49 @@ namespace UnrealEngine.Framework {
 	/// <summary>
 	/// A trace hit
 	/// </summary>
-	[StructLayout(LayoutKind.Sequential)]
 	public partial struct Hit : IEquatable<Hit> {
 		/// <summary>
-		/// Gets the location in world space where the moving shape would end up against the impacted object if there was a hit
+		/// Returns the location in world space where the moving shape would end up against the impacted object if there was a hit
 		/// </summary>
 		public Vector3 Location => location;
 
 		/// <summary>
-		/// Gets the location in world space of the actual contact of the trace shape with the impacted object
+		/// Returns the location in world space of the actual contact of the trace shape with the impacted object
 		/// </summary>
 		public Vector3 ImpactLocation => impactLocation;
 
 		/// <summary>
-		/// Gets the normal of the hit in world space for the object that was swept
+		/// Returns the normal of the hit in world space for the object that was swept
 		/// </summary>
 		public Vector3 Normal => normal;
 
 		/// <summary>
-		/// Gets the normal of the hit in world space for the object that was hit by the sweep
+		/// Returns the normal of the hit in world space for the object that was hit by the sweep
 		/// </summary>
 		public Vector3 ImpactNormal => impactNormal;
 
 		/// <summary>
-		/// Gets the start location of the trace
+		/// Returns the start location of the trace
 		/// </summary>
 		public Vector3 TraceStart => traceStart;
 
 		/// <summary>
-		/// Gets the end location of the trace
+		/// Returns the end location of the trace
 		/// </summary>
 		public Vector3 TraceEnd => traceEnd;
 
 		/// <summary>
-		/// Gets the impact along trace direction between 0.0f and 1.0f if there was a hit, indicating time between <see cref="TraceStart"/> and <see cref="TraceEnd"/>
+		/// Returns the impact along trace direction between 0.0f and 1.0f if there was a hit, indicating time between <see cref="TraceStart"/> and <see cref="TraceEnd"/>
 		/// </summary>
 		public float Time => time;
 
 		/// <summary>
-		/// Gets the distance from <see cref="TraceStart"/> to <see cref="Location"/> in world space
+		/// Returns the distance from <see cref="TraceStart"/> to <see cref="Location"/> in world space
 		/// </summary>
 		public float Distance => distance;
 
 		/// <summary>
-		/// Gets the distance along with <see cref="Normal"/> that will result in moving out of penetration if <see cref="StartPenetrating"/> is <c>true</c> and a penetration vector can be computed
+		/// Returns the distance along with <see cref="Normal"/> that will result in moving out of penetration if <see cref="StartPenetrating"/> is <c>true</c> and a penetration vector can be computed
 		/// </summary>
 		public float PenetrationDepth => penetrationDepth;
 
@@ -1040,7 +1605,7 @@ namespace UnrealEngine.Framework {
 		/// </summary>
 		public Actor GetActor() {
 			if (actor != IntPtr.Zero)
-				return new Actor(actor);
+				return new(actor);
 
 			return null;
 		}
@@ -1095,12 +1660,64 @@ namespace UnrealEngine.Framework {
 	}
 
 	/// <summary>
-	/// A representation of the collision shape
+	/// A combined axis-aligned bounding box and bounding sphere with the same origin
 	/// </summary>
-	[StructLayout(LayoutKind.Explicit)]
+	public partial struct Bounds : IEquatable<Bounds> {
+		/// <summary>
+		/// Returns the origin of the bounding box and sphere
+		/// </summary>
+		public Vector3 Origin => origin;
+
+		/// <summary>
+		/// Returns the extent of the bounding box
+		/// </summary>
+		public Vector3 BoxExtent => boxExtent;
+
+		/// <summary>
+		/// Returns the radius of the bounding sphere
+		/// </summary>
+		public float SphereRadius => sphereRadius;
+
+		/// <summary>
+		/// Tests for equality between two objects
+		/// </summary>
+		public static bool operator ==(Bounds left, Bounds right) => left.Equals(right);
+
+		/// <summary>
+		/// Tests for inequality between two objects
+		/// </summary>
+		public static bool operator !=(Bounds left, Bounds right) => !left.Equals(right);
+
+		/// <summary>
+		/// Indicates equality of objects
+		/// </summary>
+		public bool Equals(Bounds other) => origin == other.origin && boxExtent == other.boxExtent && sphereRadius == other.sphereRadius;
+
+		/// <summary>
+		/// Indicates equality of objects
+		/// </summary>
+		public override bool Equals(object value) {
+			if (value == null)
+				return false;
+
+			if (!ReferenceEquals(value.GetType(), typeof(Bounds)))
+				return false;
+
+			return Equals((Bounds)value);
+		}
+
+		/// <summary>
+		/// Returns a hash code for the object
+		/// </summary>
+		public override int GetHashCode() => HashCode.Combine(origin, boxExtent, sphereRadius);
+	}
+
+	/// <summary>
+	/// A collision shape
+	/// </summary>
 	public partial struct CollisionShape : IEquatable<CollisionShape> {
 		/// <summary>
-		/// Gets the shape type
+		/// Returns the shape type
 		/// </summary>
 		public CollisionShapeType ShapeType => shapeType;
 
@@ -1198,22 +1815,47 @@ namespace UnrealEngine.Framework {
 	/// <summary>
 	/// Delegate for actor overlap events
 	/// </summary>
-	public delegate void ActorOverlapDelegate(ObjectReference overlapActor, ObjectReference otherActor);
+	public delegate void ActorOverlapDelegate(ActorReference overlapActor, ActorReference otherActor);
 
 	/// <summary>
 	/// Delegate for actor hit events
 	/// </summary>
-	public delegate void ActorHitDelegate(ObjectReference hitActor, ObjectReference otherActor, in Vector3 normalImpulse, in Hit hit);
+	public delegate void ActorHitDelegate(ActorReference hitActor, ActorReference otherActor, in Vector3 normalImpulse, in Hit hit);
+
+	/// <summary>
+	/// Delegate for actor cursor events
+	/// </summary>
+	public delegate void ActorCursorDelegate(ActorReference actor);
+
+	/// <summary>
+	/// Delegate for actor key events
+	/// </summary>
+	public delegate void ActorKeyDelegate(ActorReference actor, string key);
 
 	/// <summary>
 	/// Delegate for component overlap events
 	/// </summary>
-	public delegate void ComponentOverlapDelegate(ObjectReference overlapComponent, ObjectReference otherComponent);
+	public delegate void ComponentOverlapDelegate(ComponentReference overlapComponent, ComponentReference otherComponent);
 
 	/// <summary>
 	/// Delegate for component hit events
 	/// </summary>
-	public delegate void ComponentHitDelegate(ObjectReference hitComponent, ObjectReference otherComponent, in Vector3 normalImpulse, in Hit hit);
+	public delegate void ComponentHitDelegate(ComponentReference hitComponent, ComponentReference otherComponent, in Vector3 normalImpulse, in Hit hit);
+
+	/// <summary>
+	/// Delegate for component cursor events
+	/// </summary>
+	public delegate void ComponentCursorDelegate(ComponentReference component);
+
+	/// <summary>
+	/// Delegate for component key events
+	/// </summary>
+	public delegate void ComponentKeyDelegate(ComponentReference component, string key);
+
+	/// <summary>
+	/// Delegate for character landing events
+	/// </summary>
+	public delegate void CharacterLandedDelegate(in Hit hit);
 
 	/// <summary>
 	/// Provides additional static constants and methods for mathematical functions that are lack in <see cref="System.Math"/>, <see cref="System.MathF"/>, and <see cref="System.Numerics"/>
@@ -1521,7 +2163,7 @@ namespace UnrealEngine.Framework {
 		/// Returns the vector perpendicular to the specified vector
 		/// </summary>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public static Vector2 Perpendicular(Vector2 value) => new Vector2(-value.Y, value.X);
+		public static Vector2 Perpendicular(Vector2 value) => new(-value.Y, value.X);
 
 		/// <summary>
 		/// Returns the unsigned angle in degrees
@@ -1544,7 +2186,7 @@ namespace UnrealEngine.Framework {
 			if (squareMagnitude > maxLength * maxLength) {
 				float magnitude = MathF.Sqrt(squareMagnitude);
 
-				return new Vector2((value.X / magnitude) * maxLength, (value.Y / magnitude) * maxLength);
+				return new((value.X / magnitude) * maxLength, (value.Y / magnitude) * maxLength);
 			}
 
 			return value;
@@ -1574,7 +2216,7 @@ namespace UnrealEngine.Framework {
 
 			float distance = MathF.Sqrt(squareMagnitude);
 
-			return new Vector2(current.X + destination.X / distance * maxDistanceDelta, current.Y + destination.Y / distance * maxDistanceDelta);
+			return new(current.X + destination.X / distance * maxDistanceDelta, current.Y + destination.Y / distance * maxDistanceDelta);
 		}
 
 		// Vector3
@@ -1636,7 +2278,7 @@ namespace UnrealEngine.Framework {
 			if (squareMagnitude > maxLength * maxLength) {
 				float magnitude = MathF.Sqrt(squareMagnitude);
 
-				return new Vector3((value.X / magnitude) * maxLength, (value.Y / magnitude) * maxLength, (value.Z / magnitude) * maxLength);
+				return new((value.X / magnitude) * maxLength, (value.Y / magnitude) * maxLength, (value.Z / magnitude) * maxLength);
 			}
 
 			return value;
@@ -1666,7 +2308,7 @@ namespace UnrealEngine.Framework {
 
 			float distance = MathF.Sqrt(squareMagnitude);
 
-			return new Vector3(current.X + destination.X / distance * maxDistanceDelta, current.Y + destination.Y / distance * maxDistanceDelta, current.Z + destination.Z / distance * maxDistanceDelta);
+			return new(current.X + destination.X / distance * maxDistanceDelta, current.Y + destination.Y / distance * maxDistanceDelta, current.Z + destination.Z / distance * maxDistanceDelta);
 		}
 
 		/// <summary>
@@ -1676,12 +2318,12 @@ namespace UnrealEngine.Framework {
 		public static Vector3 Project(Vector3 value, Vector3 normal) {
 			float squareMagnitude = SquareMagnitude(normal);
 
-			if (squareMagnitude < float.Epsilon)
+			if (squareMagnitude < Single.Epsilon)
 				return Vector3.Zero;
 
 			float dot = Vector3.Dot(value, normal);
 
-			return new Vector3(normal.X * dot / squareMagnitude, normal.Y * dot / squareMagnitude, normal.Z * dot / squareMagnitude);
+			return new(normal.X * dot / squareMagnitude, normal.Y * dot / squareMagnitude, normal.Z * dot / squareMagnitude);
 		}
 
 		/// <summary>
@@ -1691,12 +2333,12 @@ namespace UnrealEngine.Framework {
 		public static Vector3 ProjectOnPlane(Vector3 value, Vector3 planeNormal) {
 			float squareMagnitude = SquareMagnitude(planeNormal);
 
-			if (squareMagnitude < float.Epsilon)
+			if (squareMagnitude < Single.Epsilon)
 				return value;
 
 			float dot = Vector3.Dot(value, planeNormal);
 
-			return new Vector3(value.X - planeNormal.X * dot / squareMagnitude, value.Y - planeNormal.Y * dot / squareMagnitude, value.Z - planeNormal.Z * dot / squareMagnitude);
+			return new(value.X - planeNormal.X * dot / squareMagnitude, value.Y - planeNormal.Y * dot / squareMagnitude, value.Z - planeNormal.Z * dot / squareMagnitude);
 		}
 
 		// Vector4
@@ -1730,7 +2372,7 @@ namespace UnrealEngine.Framework {
 		// Quaternion
 
 		/// <summary>
-		/// Returns a rotation that rotates z degrees around the z axis, x degrees around the x axis, and y degrees around the y axis
+		/// Returns a rotation which rotates z degrees around the z axis, x degrees around the x axis, and y degrees around the y axis
 		/// </summary>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static Quaternion Euler(float x, float y, float z) {
@@ -1742,7 +2384,7 @@ namespace UnrealEngine.Framework {
 		}
 
 		/// <summary>
-		/// Returns a rotation that rotates z degrees around the z axis, x degrees around the x axis, and y degrees around the y axis
+		/// Returns a rotation which rotates z degrees around the z axis, x degrees around the x axis, and y degrees around the y axis
 		/// </summary>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static Quaternion Euler(Vector3 eulerAngles) => Euler(eulerAngles.X, eulerAngles.Y, eulerAngles.Z);
@@ -1768,7 +2410,27 @@ namespace UnrealEngine.Framework {
 			float halfAngle = angle * DegToRadF * 0.5f;
 			float sin = MathF.Sin(halfAngle);
 
-			return new Quaternion(axis.X * sin, axis.Y * sin, axis.Z * sin, MathF.Cos(halfAngle));
+			return new(axis.X * sin, axis.Y * sin, axis.Z * sin, MathF.Cos(halfAngle));
+		}
+
+		/// <summary>
+		/// Returns a rotation which rotates from <paramref name="fromDirection"/> to <paramref name="toDirection"/>
+		/// </summary>
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static Quaternion FromToRotation(Vector3 fromDirection, Vector3 toDirection) {
+			float dot = Vector3.Dot(fromDirection, toDirection);
+			float normal = MathF.Sqrt(SquareMagnitude(fromDirection) * SquareMagnitude(toDirection));
+			float real = normal + dot;
+			Vector3 final = default;
+
+			if (real < Single.Epsilon * normal) {
+				real = 0.0f;
+				final = MathF.Abs(fromDirection.X) > MathF.Abs(fromDirection.Z) ? new(-fromDirection.Y, fromDirection.X, 0.0f) : new(0.0f, -fromDirection.Z, fromDirection.Y);
+			} else {
+				final = Vector3.Cross(fromDirection, toDirection);
+			}
+
+			return Quaternion.Normalize(new(final, real));
 		}
 
 		/// <summary>
@@ -2666,9 +3328,9 @@ namespace UnrealEngine.Framework {
 	/// <summary>
 	/// Functionality to detect and diagnose unexpected or invalid runtime conditions during development, emitted if the assembly is built with the <a href="https://docs.microsoft.com/en-us/dotnet/core/tools/dotnet-build#options">Debug</a> configuration or if <c>ASSERTIONS</c> symbol is defined, signals a breakpoint to an attached debugger
 	/// </summary>
-	public static partial class Assert {
+	public static unsafe partial class Assert {
 		[ThreadStatic]
-		private static StringBuilder stringBuffer = new StringBuilder(8192);
+		private static StringBuilder stringBuffer = new(8192);
 
 		private static void Message(string message, int callerLineNumber, string callerFilePath) {
 			stringBuffer.Clear()
@@ -2677,7 +3339,7 @@ namespace UnrealEngine.Framework {
 			if (message != null)
 				stringBuffer.AppendFormat(" with message: {0}", message);
 
-			outputMessage(stringBuffer.ToString());
+			outputMessage(Encoding.UTF8.GetBytes(stringBuffer.ToString()));
 
 			Debugger.Break();
 		}
@@ -2722,7 +3384,7 @@ namespace UnrealEngine.Framework {
 	/// <summary>
 	/// Functionality to work with the command-line of the engine executable
 	/// </summary>
-	public static partial class CommandLine {
+	public static unsafe partial class CommandLine {
 		/// <summary>
 		/// Returns the user arguments
 		/// </summary>
@@ -2731,7 +3393,7 @@ namespace UnrealEngine.Framework {
 
 			get(stringBuffer);
 
-			return Encoding.UTF8.GetString(stringBuffer).TrimFromZero();
+			return stringBuffer.BytesToString();
 		}
 
 		/// <summary>
@@ -2758,9 +3420,9 @@ namespace UnrealEngine.Framework {
 	/// <summary>
 	/// Functionality for debugging
 	/// </summary>
-	public static partial class Debug {
+	public static unsafe partial class Debug {
 		[ThreadStatic]
-		private static StringBuilder stringBuffer = new StringBuilder(8192);
+		private static StringBuilder stringBuffer = new(8192);
 
 		/// <summary>
 		/// Logs a message in accordance to the specified level, omitted in builds with the <a href="https://docs.unrealengine.com/en-US/Programming/Development/BuildConfigurations/index.html#buildconfigurationdescriptions">Shipping</a> configuration
@@ -2769,7 +3431,7 @@ namespace UnrealEngine.Framework {
 			if (message == null)
 				throw new ArgumentNullException(nameof(message));
 
-			log(level, message);
+			log(level, Encoding.UTF8.GetBytes(message));
 		}
 
 		/// <summary>
@@ -2786,9 +3448,9 @@ namespace UnrealEngine.Framework {
 			.AppendLine().AppendFormat("Source: {0}", exception.Source)
 			.AppendLine();
 
-			handleException(stringBuffer.ToString());
+			Debug.exception(Encoding.UTF8.GetBytes(stringBuffer.ToString()));
 
-			using (StreamWriter streamWriter = File.AppendText(Path.Project + "/Saved/Logs/Exceptions-" + Assembly.GetCallingAssembly().GetName().Name + ".log")) {
+			using (StreamWriter streamWriter = File.AppendText(Application.ProjectDirectory + "Saved/Logs/Exceptions-" + Assembly.GetCallingAssembly().GetName().Name + ".log")) {
 				streamWriter.WriteLine(stringBuffer);
 				streamWriter.Close();
 			}
@@ -2801,7 +3463,7 @@ namespace UnrealEngine.Framework {
 			if (message == null)
 				throw new ArgumentNullException(nameof(message));
 
-			addOnScreenMessage(key, timeToDisplay, displayColor.ToArgb(), message);
+			addOnScreenMessage(key, timeToDisplay, displayColor.ToArgb(), Encoding.UTF8.GetBytes(message));
 		}
 
 		/// <summary>
@@ -2853,7 +3515,7 @@ namespace UnrealEngine.Framework {
 	/// <summary>
 	/// Provides information about the application
 	/// </summary>
-	public static partial class Application {
+	public static unsafe partial class Application {
 		/// <summary>
 		/// Returns <c>true</c> if the application can render anything
 		/// </summary>
@@ -2878,7 +3540,7 @@ namespace UnrealEngine.Framework {
 
 				getProjectDirectory(stringBuffer);
 
-				return Encoding.UTF8.GetString(stringBuffer).TrimFromZero();
+				return stringBuffer.BytesToString();
 			}
 		}
 
@@ -2891,7 +3553,7 @@ namespace UnrealEngine.Framework {
 
 				getDefaultLanguage(stringBuffer);
 
-				return Encoding.UTF8.GetString(stringBuffer).TrimFromZero();
+				return stringBuffer.BytesToString();
 			}
 		}
 
@@ -2904,7 +3566,7 @@ namespace UnrealEngine.Framework {
 
 				getProjectName(stringBuffer);
 
-				return Encoding.UTF8.GetString(stringBuffer).TrimFromZero();
+				return stringBuffer.BytesToString();
 			}
 
 			set {
@@ -2929,7 +3591,7 @@ namespace UnrealEngine.Framework {
 	/// <summary>
 	/// Handles console commands and variables
 	/// </summary>
-	public static partial class ConsoleManager {
+	public static unsafe partial class ConsoleManager {
 		/// <summary>
 		/// Returns <c>true</c> if a console command or variable has been registered
 		/// </summary>
@@ -2949,7 +3611,7 @@ namespace UnrealEngine.Framework {
 				throw new ArgumentNullException(nameof(name));
 
 			if (findVariable(name) != IntPtr.Zero)
-				return new ConsoleVariable(name);
+				return new(name);
 
 			return null;
 		}
@@ -2970,7 +3632,7 @@ namespace UnrealEngine.Framework {
 				throw new ArgumentNullException(nameof(help));
 
 			if (registerVariableBool(name, help, defaultValue, readOnly) != IntPtr.Zero)
-				return new ConsoleVariable(name);
+				return new(name);
 
 			return null;
 		}
@@ -2991,7 +3653,7 @@ namespace UnrealEngine.Framework {
 				throw new ArgumentNullException(nameof(help));
 
 			if (registerVariableInt(name, help, defaultValue, readOnly) != IntPtr.Zero)
-				return new ConsoleVariable(name);
+				return new(name);
 
 			return null;
 		}
@@ -3012,7 +3674,7 @@ namespace UnrealEngine.Framework {
 				throw new ArgumentNullException(nameof(help));
 
 			if (registerVariableFloat(name, help, defaultValue, readOnly) != IntPtr.Zero)
-				return new ConsoleVariable(name);
+				return new(name);
 
 			return null;
 		}
@@ -3033,19 +3695,18 @@ namespace UnrealEngine.Framework {
 				throw new ArgumentNullException(nameof(help));
 
 			if (registerVariableString(name, help, defaultValue, readOnly) != IntPtr.Zero)
-				return new ConsoleVariable(name);
+				return new(name);
 
 			return null;
 		}
 
 		/// <summary>
-		/// Creates and registers a static callback function for a console command that takes no arguments, remains alive during the lifetime of the engine until unregistered
+		/// Creates and registers the callback function for a console command that takes no arguments, remains alive during the lifetime of the engine until unregistered
 		/// </summary>
 		/// <param name="name">The name of the command</param>
 		/// <param name="help">Help text for the command</param>
-		/// <param name="callback">The static function to call when the command is executed</param>
+		/// <param name="callback">The function to call when the command is executed</param>
 		/// <param name="readOnly">If <c>true</c>, cannot be changed by the user from console</param>
-		/// <exception cref="System.ArgumentException">Thrown if <paramref name="callback"/> is not static</exception>
 		public static void RegisterCommand(string name, string help, ConsoleCommandDelegate callback, bool readOnly = false) {
 			if (name == null)
 				throw new ArgumentNullException(nameof(name));
@@ -3056,10 +3717,7 @@ namespace UnrealEngine.Framework {
 			if (callback == null)
 				throw new ArgumentNullException(nameof(callback));
 
-			if (!callback.Method.IsStatic)
-				throw new ArgumentException(nameof(callback) + " should be static");
-
-			registerCommand(name, help, callback.Method.MethodHandle.GetFunctionPointer(), readOnly);
+			registerCommand(name, help, Collector.GetFunctionPointer(callback), readOnly);
 		}
 
 		/// <summary>
@@ -3076,7 +3734,7 @@ namespace UnrealEngine.Framework {
 	/// <summary>
 	/// Functionality for management of engine systems
 	/// </summary>
-	public static partial class Engine {
+	public static unsafe partial class Engine {
 		/// <summary>
 		/// Returns <c>true</c> if the game is running in split screen mode
 		/// </summary>
@@ -3165,7 +3823,7 @@ namespace UnrealEngine.Framework {
 
 				getVersion(stringBuffer);
 
-				return Encoding.UTF8.GetString(stringBuffer).TrimFromZero();
+				return stringBuffer.BytesToString();
 			}
 		}
 
@@ -3221,7 +3879,7 @@ namespace UnrealEngine.Framework {
 	/// <summary>
 	/// Functionality for access to the head-mounted display
 	/// </summary>
-	public static partial class HeadMountedDisplay {
+	public static unsafe partial class HeadMountedDisplay {
 		/// <summary>
 		/// Returns <c>true</c> if the head-mounted display is connected and ready to use
 		/// </summary>
@@ -3252,7 +3910,7 @@ namespace UnrealEngine.Framework {
 
 				getDeviceName(stringBuffer);
 
-				return Encoding.UTF8.GetString(stringBuffer).TrimFromZero();
+				return stringBuffer.BytesToString();
 			}
 		}
 	}
@@ -3260,7 +3918,7 @@ namespace UnrealEngine.Framework {
 	/// <summary>
 	/// The top-level representation of a map or a sandbox in which actors and components will exist and rendered
 	/// </summary>
-	public static partial class World {
+	public static unsafe partial class World {
 		/// <summary>
 		/// Returns the actor count
 		/// </summary>
@@ -3290,7 +3948,7 @@ namespace UnrealEngine.Framework {
 
 				getCurrentLevelName(stringBuffer);
 
-				return Encoding.UTF8.GetString(stringBuffer).TrimFromZero();
+				return stringBuffer.BytesToString();
 			}
 		}
 
@@ -3300,6 +3958,26 @@ namespace UnrealEngine.Framework {
 		public static bool SimulatePhysics {
 			get => getSimulatePhysics();
 			set => setSimulatePhysics(value);
+		}
+
+		/// <summary>
+		/// Performs the specified action on each actor in the world
+		/// </summary>
+		public static unsafe void ForEachActor<T>(Action<T> action) where T : Actor {
+			if (action == null)
+				throw new ArgumentNullException(nameof(action));
+
+			ObjectReference* array = null;
+			int elements = 0;
+
+			forEachActor(ref array, ref elements);
+
+			for (int i = 0; i < elements; i++) {
+				T actor = array[i].ToActor<T>();
+
+				if (actor != null)
+					action(actor);
+			}
 		}
 
 		/// <summary>
@@ -3367,7 +4045,20 @@ namespace UnrealEngine.Framework {
 			IntPtr pointer = getFirstPlayerController();
 
 			if (pointer != IntPtr.Zero)
-				return new PlayerController(pointer);
+				return new(pointer);
+
+			return null;
+		}
+
+		/// <summary>
+		/// Returns the current game mode instance which is always valid during gameplay on the server
+		/// </summary>
+		/// <returns>A game mode or <c>null</c> on failure</returns>
+		public static GameModeBase GetGameMode() {
+			IntPtr pointer = getGameMode();
+
+			if (pointer != IntPtr.Zero)
+				return new(pointer);
 
 			return null;
 		}
@@ -3389,93 +4080,143 @@ namespace UnrealEngine.Framework {
 		}
 
 		/// <summary>
-		/// Sets the static callback function that is called when actors start overlapping
+		/// Sets the callback function that is called when actors start overlapping
 		/// </summary>
-		/// <param name="callback">The static function to call when an actor start overlapping with another one</param>
-		/// <exception cref="System.ArgumentException">Thrown if <paramref name="callback"/> is not static</exception>
 		public static void SetOnActorBeginOverlapCallback(ActorOverlapDelegate callback) {
 			if (callback == null)
 				throw new ArgumentNullException(nameof(callback));
 
-			if (!callback.Method.IsStatic)
-				throw new ArgumentException(nameof(callback) + " should be static");
-
-			setOnActorBeginOverlapCallback(callback.Method.MethodHandle.GetFunctionPointer());
+			setOnActorBeginOverlapCallback(Collector.GetFunctionPointer(callback));
 		}
 
 		/// <summary>
-		/// Sets the static callback function that is called when actors end overlapping
+		/// Sets the callback function that is called when actors end overlapping
 		/// </summary>
-		/// <param name="callback">The static function to call when an actor end overlapping with another one</param>
-		/// <exception cref="System.ArgumentException">Thrown if <paramref name="callback"/> is not static</exception>
 		public static void SetOnActorEndOverlapCallback(ActorOverlapDelegate callback) {
 			if (callback == null)
 				throw new ArgumentNullException(nameof(callback));
 
-			if (!callback.Method.IsStatic)
-				throw new ArgumentException(nameof(callback) + " should be static");
-
-			setOnActorEndOverlapCallback(callback.Method.MethodHandle.GetFunctionPointer());
+			setOnActorEndOverlapCallback(Collector.GetFunctionPointer(callback));
 		}
 
 		/// <summary>
-		/// Sets the static callback function that is called when actors hit collisions
+		/// Sets the callback function that is called when actors hit collisions
 		/// </summary>
-		/// <param name="callback">The static function to call when an actor hit another one</param>
-		/// <exception cref="System.ArgumentException">Thrown if <paramref name="callback"/> is not static</exception>
 		public static void SetOnActorHitCallback(ActorHitDelegate callback) {
 			if (callback == null)
 				throw new ArgumentNullException(nameof(callback));
 
-			if (!callback.Method.IsStatic)
-				throw new ArgumentException(nameof(callback) + " should be static");
-
-			setOnActorHitCallback(callback.Method.MethodHandle.GetFunctionPointer());
+			setOnActorHitCallback(Collector.GetFunctionPointer(callback));
 		}
 
 		/// <summary>
-		/// Sets the static callback function that is called when primitive components start overlapping
+		/// Sets the callback function that is called when the mouse cursor is moved over an actor if mouse over events are enabled in the player controller
 		/// </summary>
-		/// <param name="callback">The static function to call when a primitive component start overlapping with another one</param>
-		/// <exception cref="System.ArgumentException">Thrown if <paramref name="callback"/> is not static</exception>
+		public static void SetOnActorBeginCursorOverCallback(ActorCursorDelegate callback) {
+			if (callback == null)
+				throw new ArgumentNullException(nameof(callback));
+
+			setOnActorBeginCursorOverCallback(Collector.GetFunctionPointer(callback));
+		}
+
+		/// <summary>
+		/// Sets the callback function that is called when the mouse cursor is moved off an actor if mouse over events are enabled in the player controller
+		/// </summary>
+		public static void SetOnActorEndCursorOverCallback(ActorCursorDelegate callback) {
+			if (callback == null)
+				throw new ArgumentNullException(nameof(callback));
+
+			setOnActorEndCursorOverCallback(Collector.GetFunctionPointer(callback));
+		}
+
+		/// <summary>
+		/// Sets the callback function that is called when the mouse button is clicked while the mouse is over an actor if click events are enabled in the player controller
+		/// </summary>
+		public static void SetOnActorClickedCallback(ActorKeyDelegate callback) {
+			if (callback == null)
+				throw new ArgumentNullException(nameof(callback));
+
+			setOnActorClickedCallback(Collector.GetFunctionPointer(callback));
+		}
+
+		/// <summary>
+		/// Sets the callback function that is called when the mouse button is released while the mouse is over an actor if click events are enabled in the player controller
+		/// </summary>
+		public static void SetOnActorReleasedCallback(ActorKeyDelegate callback) {
+			if (callback == null)
+				throw new ArgumentNullException(nameof(callback));
+
+			setOnActorReleasedCallback(Collector.GetFunctionPointer(callback));
+		}
+
+		/// <summary>
+		/// Sets the callback function that is called when primitive components start overlapping
+		/// </summary>
 		public static void SetOnComponentBeginOverlapCallback(ComponentOverlapDelegate callback) {
 			if (callback == null)
 				throw new ArgumentNullException(nameof(callback));
 
-			if (!callback.Method.IsStatic)
-				throw new ArgumentException(nameof(callback) + " should be static");
-
-			setOnComponentBeginOverlapCallback(callback.Method.MethodHandle.GetFunctionPointer());
+			setOnComponentBeginOverlapCallback(Collector.GetFunctionPointer(callback));
 		}
 
 		/// <summary>
-		/// Sets the static callback function that is called when primitive components end overlapping
+		/// Sets the callback function that is called when primitive components end overlapping
 		/// </summary>
-		/// <param name="callback">The static function to call when a primitive component end overlapping with another one</param>
-		/// <exception cref="System.ArgumentException">Thrown if <paramref name="callback"/> is not static</exception>
 		public static void SetOnComponentEndOverlapCallback(ComponentOverlapDelegate callback) {
 			if (callback == null)
 				throw new ArgumentNullException(nameof(callback));
 
-			if (!callback.Method.IsStatic)
-				throw new ArgumentException(nameof(callback) + " should be static");
-
-			setOnComponentEndOverlapCallback(callback.Method.MethodHandle.GetFunctionPointer());
+			setOnComponentEndOverlapCallback(Collector.GetFunctionPointer(callback));
 		}
 
 		/// <summary>
-		/// Sets the static callback function that is called when components hit collisions
+		/// Sets the callback function that is called when components hit collisions
 		/// </summary>
-		/// <param name="callback">The static function to call when a primitive component hit another one</param>
-		/// <exception cref="System.ArgumentException">Thrown if <paramref name="callback"/> is not static</exception>
 		public static void SetOnComponentHitCallback(ComponentHitDelegate callback) {
 			if (callback == null)
 				throw new ArgumentNullException(nameof(callback));
 
-			if (!callback.Method.IsStatic)
-				throw new ArgumentException(nameof(callback) + " should be static");
+			setOnComponentHitCallback(Collector.GetFunctionPointer(callback));
+		}
 
-			setOnComponentHitCallback(callback.Method.MethodHandle.GetFunctionPointer());
+		/// <summary>
+		/// Sets the callback function that is called when the mouse cursor is moved over a component and mouse over events are enabled in the player controller
+		/// </summary>
+		public static void SetOnComponentBeginCursorOverCallback(ComponentCursorDelegate callback) {
+			if (callback == null)
+				throw new ArgumentNullException(nameof(callback));
+
+			setOnComponentBeginCursorOverCallback(Collector.GetFunctionPointer(callback));
+		}
+
+		/// <summary>
+		/// Sets the callback function that is called when the mouse cursor is moved off a component and mouse over events are enabled in the player controller
+		/// </summary>
+		public static void SetOnComponentEndCursorOverCallback(ComponentCursorDelegate callback) {
+			if (callback == null)
+				throw new ArgumentNullException(nameof(callback));
+
+			setOnComponentEndCursorOverCallback(Collector.GetFunctionPointer(callback));
+		}
+
+		/// <summary>
+		/// Sets the callback function that is called when the mouse button is clicked while the mouse is over a component if click events are enabled in the player controller
+		/// </summary>
+		public static void SetOnComponentClickedCallback(ComponentKeyDelegate callback) {
+			if (callback == null)
+				throw new ArgumentNullException(nameof(callback));
+
+			setOnComponentClickedCallback(Collector.GetFunctionPointer(callback));
+		}
+
+		/// <summary>
+		/// Sets the callback function that is called when the mouse button is released while the mouse is over a component if click events are enabled in the player controller
+		/// </summary>
+		public static void SetOnComponentReleasedCallback(ComponentKeyDelegate callback) {
+			if (callback == null)
+				throw new ArgumentNullException(nameof(callback));
+
+			setOnComponentReleasedCallback(Collector.GetFunctionPointer(callback));
 		}
 
 		/// <summary>
@@ -3521,7 +4262,7 @@ namespace UnrealEngine.Framework {
 
 			bool result = lineTraceSingleByChannel(start, end, channel, ref hit, stringBuffer, traceComplex, ignoredActor != null ? ignoredActor.Pointer : IntPtr.Zero, ignoredComponent != null ? ignoredComponent.Pointer : IntPtr.Zero);
 
-			boneName = Encoding.UTF8.GetString(stringBuffer).TrimFromZero();
+			boneName = stringBuffer.BytesToString();
 
 			return result;
 		}
@@ -3541,7 +4282,7 @@ namespace UnrealEngine.Framework {
 
 			bool result = lineTraceSingleByProfile(start, end, profileName, ref hit, stringBuffer, traceComplex, ignoredActor != null ? ignoredActor.Pointer : IntPtr.Zero, ignoredComponent != null ? ignoredComponent.Pointer : IntPtr.Zero);
 
-			boneName = Encoding.UTF8.GetString(stringBuffer).TrimFromZero();
+			boneName = stringBuffer.BytesToString();
 
 			return result;
 		}
@@ -3573,7 +4314,7 @@ namespace UnrealEngine.Framework {
 
 			bool result = sweepSingleByChannel(start, end, rotation, channel, shape, ref hit, stringBuffer, traceComplex, ignoredActor != null ? ignoredActor.Pointer : IntPtr.Zero, ignoredComponent != null ? ignoredComponent.Pointer : IntPtr.Zero);
 
-			boneName = Encoding.UTF8.GetString(stringBuffer).TrimFromZero();
+			boneName = stringBuffer.BytesToString();
 
 			return result;
 		}
@@ -3593,7 +4334,7 @@ namespace UnrealEngine.Framework {
 
 			bool result = sweepSingleByProfile(start, end, rotation, profileName, shape, ref hit, stringBuffer, traceComplex, ignoredActor != null ? ignoredActor.Pointer : IntPtr.Zero, ignoredComponent != null ? ignoredComponent.Pointer : IntPtr.Zero);
 
-			boneName = Encoding.UTF8.GetString(stringBuffer).TrimFromZero();
+			boneName = stringBuffer.BytesToString();
 
 			return result;
 		}
@@ -3624,9 +4365,166 @@ namespace UnrealEngine.Framework {
 	}
 
 	/// <summary>
+	/// A representation of the asset
+	/// </summary>
+	public unsafe partial struct Asset : IEquatable<Asset> {
+		private IntPtr pointer;
+
+		internal IntPtr Pointer {
+			get {
+				if (!IsCreated)
+					throw new InvalidOperationException();
+
+				return pointer;
+			}
+
+			set {
+				if (value == IntPtr.Zero)
+					throw new InvalidOperationException();
+
+				pointer = value;
+			}
+		}
+
+		/// <summary>
+		/// Tests for equality between two objects
+		/// </summary>
+		public static bool operator ==(Asset left, Asset right) => left.Equals(right);
+
+		/// <summary>
+		/// Tests for inequality between two objects
+		/// </summary>
+		public static bool operator !=(Asset left, Asset right) => !left.Equals(right);
+
+		/// <summary>
+		/// Returns <c>true</c> if the object is created
+		/// </summary>
+		public bool IsCreated => pointer != IntPtr.Zero && isValid(pointer);
+
+		/// <summary>
+		/// Indicates equality of objects
+		/// </summary>
+		public bool Equals(Asset other) => IsCreated && pointer == other.pointer;
+
+		/// <summary>
+		/// Indicates equality of objects
+		/// </summary>
+		public override bool Equals(object value) {
+			if (value == null)
+				return false;
+
+			if (!ReferenceEquals(value.GetType(), typeof(Asset)))
+				return false;
+
+			return Equals((Asset)value);
+		}
+
+		/// <summary>
+		/// Returns a hash code for the object
+		/// </summary>
+		public override int GetHashCode() => pointer.GetHashCode();
+
+		/// <summary>
+		/// Returns the name of the asset
+		/// </summary>
+		public string Name {
+			get {
+				byte[] stringBuffer = ArrayPool.GetStringBuffer();
+
+				getName(Pointer, stringBuffer);
+
+				return stringBuffer.BytesToString();
+			}
+		}
+
+		/// <summary>
+		/// Returns the path to the asset
+		/// </summary>
+		public string Path {
+			get {
+				byte[] stringBuffer = ArrayPool.GetStringBuffer();
+
+				getPath(Pointer, stringBuffer);
+
+				return stringBuffer.BytesToString();
+			}
+		}
+	}
+
+	/// <summary>
+	/// An asset registry
+	/// </summary>
+	public unsafe partial class AssetRegistry : IEquatable<AssetRegistry> {
+		private IntPtr pointer;
+
+		internal IntPtr Pointer {
+			get {
+				if (!IsCreated)
+					throw new InvalidOperationException();
+
+				return pointer;
+			}
+
+			set {
+				if (value == IntPtr.Zero)
+					throw new InvalidOperationException();
+
+				pointer = value;
+			}
+		}
+
+		/// <summary>
+		/// Initializes a new instance of the asset registry
+		/// </summary>
+		public AssetRegistry() => Pointer = get();
+
+		/// <summary>
+		/// Returns <c>true</c> if the object is created
+		/// </summary>
+		public bool IsCreated => pointer != IntPtr.Zero;
+
+		/// <summary>
+		/// Indicates equality of objects
+		/// </summary>
+		public bool Equals(AssetRegistry other) => IsCreated && pointer == other?.pointer;
+
+		/// <summary>
+		/// Returns a hash code for the object
+		/// </summary>
+		public override int GetHashCode() => pointer.GetHashCode();
+
+		/// <summary>
+		/// Checks whether the given path contain assets, optionally testing sub-paths
+		/// </summary>
+		public bool HasAssets(string path, bool recursive = false) {
+			if (path == null)
+				throw new ArgumentNullException(nameof(path));
+
+			return hasAssets(Pointer, path, recursive);
+		}
+
+		/// <summary>
+		/// Performs the specified action on each asset if any
+		/// </summary>
+		public unsafe void ForEachAsset(Action<Asset> action, string path, bool recursive = false, bool includeOnlyOnDiskAssets = false) {
+			if (action == null)
+				throw new ArgumentNullException(nameof(action));
+
+			Asset* array = null;
+			int elements = 0;
+
+			forEachAsset(Pointer, path, recursive, includeOnlyOnDiskAssets, ref array, ref elements);
+
+			for (int i = 0; i < elements; i++) {
+				action(array[i]);
+			}
+		}
+	}
+
+	/// <summary>
 	/// Interface for console objects
 	/// </summary>
-	public partial class ConsoleObject : IEquatable<ConsoleObject> {
+	public unsafe partial class ConsoleObject : IEquatable<ConsoleObject> {
 		private string name;
 
 		internal string Name {
@@ -3670,7 +4568,7 @@ namespace UnrealEngine.Framework {
 		/// <summary>
 		/// Returns a hash code for the object
 		/// </summary>
-		public override int GetHashCode() => name.GetHashCode(StringComparison.CurrentCulture);
+		public override int GetHashCode() => name.GetHashCode(StringComparison.Ordinal);
 
 		/// <summary>
 		/// Returns <c>true</c> if the object is a bool
@@ -3696,7 +4594,7 @@ namespace UnrealEngine.Framework {
 	/// <summary>
 	/// Interface for console variables
 	/// </summary>
-	public partial class ConsoleVariable : ConsoleObject {
+	public unsafe partial class ConsoleVariable : ConsoleObject {
 		private protected ConsoleVariable() { }
 
 		internal ConsoleVariable(string name) => Name = name;
@@ -3724,7 +4622,7 @@ namespace UnrealEngine.Framework {
 
 			getString(Pointer, stringBuffer);
 
-			return Encoding.UTF8.GetString(stringBuffer).TrimFromZero();
+			return stringBuffer.BytesToString();
 		}
 
 		/// <summary>
@@ -3748,18 +4646,14 @@ namespace UnrealEngine.Framework {
 		public void SetString(string value) => setString(Pointer, value);
 
 		/// <summary>
-		/// Sets the static callback function that is called when the console variable value changes
+		/// Sets the callback function that is called when the console variable value changes
 		/// </summary>
-		/// <param name="callback">The static function to call when the value of variable is changed</param>
-		/// <exception cref="System.ArgumentException">Thrown if <paramref name="callback"/> is not static</exception>
+		/// <param name="callback">The function to call when the value of variable is changed</param>
 		public void SetOnChangedCallback(ConsoleVariableDelegate callback) {
 			if (callback == null)
 				throw new ArgumentNullException(nameof(callback));
 
-			if (!callback.Method.IsStatic)
-				throw new ArgumentException(nameof(callback) + " should be static");
-
-			setOnChangedCallback(Pointer, callback.Method.MethodHandle.GetFunctionPointer());
+			setOnChangedCallback(Pointer, Collector.GetFunctionPointer(callback));
 		}
 
 		/// <summary>
@@ -3771,7 +4665,7 @@ namespace UnrealEngine.Framework {
 	/// <summary>
 	/// The base class of an object that can be placed or spawned in a level
 	/// </summary>
-	public partial class Actor : IEquatable<Actor> {
+	public unsafe partial class Actor : IEquatable<Actor> {
 		private IntPtr pointer;
 
 		internal IntPtr Pointer {
@@ -3832,6 +4726,86 @@ namespace UnrealEngine.Framework {
 		}
 
 		/// <summary>
+		/// Performs the specified action on each component if any
+		/// </summary>
+		public unsafe void ForEachComponent<T>(Action<T> action) where T : ActorComponent {
+			if (action == null)
+				throw new ArgumentNullException(nameof(action));
+
+			ObjectReference* array = null;
+			int elements = 0;
+
+			forEachComponent(Pointer, ref array, ref elements);
+
+			for (int i = 0; i < elements; i++) {
+				T component = array[i].ToComponent<T>();
+
+				if (component != null)
+					action(component);
+			}
+		}
+
+		/// <summary>
+		/// Performs the specified action on each attached actor if any
+		/// </summary>
+		public unsafe void ForEachAttachedActor<T>(Action<T> action) where T : Actor {
+			if (action == null)
+				throw new ArgumentNullException(nameof(action));
+
+			ObjectReference* array = null;
+			int elements = 0;
+
+			forEachAttachedActor(Pointer, ref array, ref elements);
+
+			for (int i = 0; i < elements; i++) {
+				T actor = array[i].ToActor<T>();
+
+				if (actor != null)
+					action(actor);
+			}
+		}
+
+		/// <summary>
+		/// Performs the specified action on each child actor with <see cref="ChildActorComponent"/>, including children of child if any
+		/// </summary>
+		public unsafe void ForEachChildActor<T>(Action<T> action) where T : Actor {
+			if (action == null)
+				throw new ArgumentNullException(nameof(action));
+
+			ObjectReference* array = null;
+			int elements = 0;
+
+			forEachChildActor(Pointer, ref array, ref elements);
+
+			for (int i = 0; i < elements; i++) {
+				T actor = array[i].ToActor<T>();
+
+				if (actor != null)
+					action(actor);
+			}
+		}
+
+		/// <summary>
+		/// Performs the specified action on each overlapping actor if any
+		/// </summary>
+		public unsafe void ForEachOverlappingActor<T>(Action<T> action) where T : Actor {
+			if (action == null)
+				throw new ArgumentNullException(nameof(action));
+
+			ObjectReference* array = null;
+			int elements = 0;
+
+			forEachOverlappingActor(Pointer, ref array, ref elements);
+
+			for (int i = 0; i < elements; i++) {
+				T actor = array[i].ToActor<T>();
+
+				if (actor != null)
+					action(actor);
+			}
+		}
+
+		/// <summary>
 		/// Returns the unique ID of the actor, reused by the engine, only unique while the actor is alive
 		/// </summary>
 		public uint ID => Object.getID(Pointer);
@@ -3845,7 +4819,7 @@ namespace UnrealEngine.Framework {
 
 				Object.getName(Pointer, stringBuffer);
 
-				return Encoding.UTF8.GetString(stringBuffer).TrimFromZero();
+				return stringBuffer.BytesToString();
 			}
 		}
 
@@ -3959,6 +4933,44 @@ namespace UnrealEngine.Framework {
 		}
 
 		/// <summary>
+		/// Retrieves the value of the enum property
+		/// </summary>
+		/// <returns><c>true</c> on success</returns>
+		public bool GetEnum<T>(string name, ref T value) where T : Enum {
+			if (name == null)
+				throw new ArgumentNullException(nameof(name));
+
+			int data = 0;
+
+			if (Object.getEnum(Pointer, name, ref data)) {
+				value = (T)Enum.ToObject(typeof(T), data);
+
+				return true;
+			}
+
+			return false;
+		}
+
+		/// <summary>
+		/// Retrieves the value of the string property
+		/// </summary>
+		/// <returns><c>true</c> on success</returns>
+		public bool GetString(string name, ref string value) {
+			if (name == null)
+				throw new ArgumentNullException(nameof(name));
+
+			byte[] stringBuffer = ArrayPool.GetStringBuffer();
+
+			if (Object.getString(Pointer, name, stringBuffer)) {
+				value = stringBuffer.BytesToString();
+
+				return true;
+			}
+
+			return false;
+		}
+
+		/// <summary>
 		/// Retrieves the value of the text property
 		/// </summary>
 		/// <returns><c>true</c> on success</returns>
@@ -3969,7 +4981,7 @@ namespace UnrealEngine.Framework {
 			byte[] stringBuffer = ArrayPool.GetStringBuffer();
 
 			if (Object.getText(Pointer, name, stringBuffer)) {
-				value = Encoding.UTF8.GetString(stringBuffer).TrimFromZero();
+				value = stringBuffer.BytesToString();
 
 				return true;
 			}
@@ -4087,6 +5099,31 @@ namespace UnrealEngine.Framework {
 		}
 
 		/// <summary>
+		/// Sets the value of the enum property
+		/// </summary>
+		/// <returns><c>true</c> on success</returns>
+		public bool SetEnum<T>(string name, T value) where T : Enum {
+			if (name == null)
+				throw new ArgumentNullException(nameof(name));
+
+			return Object.setEnum(Pointer, name, Convert.ToInt32(value));
+		}
+
+		/// <summary>
+		/// Sets the value of the string property
+		/// </summary>
+		/// <returns><c>true</c> on success</returns>
+		public bool SetString(string name, string value) {
+			if (name == null)
+				throw new ArgumentNullException(nameof(name));
+
+			if (value == null)
+				throw new ArgumentNullException(nameof(value));
+
+			return Object.setString(Pointer, name, value);
+		}
+
+		/// <summary>
 		/// Sets the value of the text property
 		/// </summary>
 		/// <returns><c>true</c> on success</returns>
@@ -4108,7 +5145,7 @@ namespace UnrealEngine.Framework {
 				IntPtr pointer = getInputComponent(Pointer);
 
 				if (pointer != IntPtr.Zero)
-					return new InputComponent(pointer);
+					return new(pointer);
 
 				return null;
 			}
@@ -4160,7 +5197,12 @@ namespace UnrealEngine.Framework {
 		}
 
 		/// <summary>
-		/// Sets the actor to be hidden
+		/// Invokes a command, function, or an event with optional arguments
+		/// </summary>
+		public bool Invoke(string command) => Object.invoke(Pointer, Encoding.UTF8.GetBytes(command));
+
+		/// <summary>
+		/// Hides the actor
 		/// </summary>
 		public void Hide(bool value) => hide(Pointer, value);
 
@@ -4299,7 +5341,7 @@ namespace UnrealEngine.Framework {
 		public void SetLifeSpan(float lifeSpan) => setLifeSpan(Pointer, lifeSpan);
 
 		/// <summary>
-		/// Sets the input handled by a <see cref="PlayerController"/>
+		/// Sets <see cref="InputComponent"/> for non-pawn actors handled by a <see cref="PlayerController"/>
 		/// </summary>
 		public void SetEnableInput(PlayerController playerController, bool value) {
 			if (playerController == null)
@@ -4342,7 +5384,7 @@ namespace UnrealEngine.Framework {
 	/// <summary>
 	/// A camera viewpoint that can be placed in a level
 	/// </summary>
-	public partial class Camera : Actor {
+	public unsafe partial class Camera : Actor {
 		internal override ActorType Type => ActorType.Camera;
 
 		private protected Camera() { }
@@ -4368,14 +5410,14 @@ namespace UnrealEngine.Framework {
 	/// <summary>
 	/// The base class of actors that used to generate collision events
 	/// </summary>
-	public abstract partial class TriggerBase : Actor {
+	public abstract unsafe partial class TriggerBase : Actor {
 		private protected TriggerBase() { }
 	}
 
 	/// <summary>
 	/// A box shaped trigger with <see cref="BoxComponent"/> used to generate overlap events
 	/// </summary>
-	public partial class TriggerBox : TriggerBase {
+	public unsafe partial class TriggerBox : TriggerBase {
 		internal override ActorType Type => ActorType.TriggerBox;
 
 		private protected TriggerBox() { }
@@ -4401,7 +5443,7 @@ namespace UnrealEngine.Framework {
 	/// <summary>
 	/// A sphere shaped trigger with <see cref="SphereComponent"/> used to generate overlap events
 	/// </summary>
-	public partial class TriggerSphere : TriggerBase {
+	public unsafe partial class TriggerSphere : TriggerBase {
 		internal override ActorType Type => ActorType.TriggerSphere;
 
 		private protected TriggerSphere() { }
@@ -4427,7 +5469,7 @@ namespace UnrealEngine.Framework {
 	/// <summary>
 	/// A capsule shaped trigger with <see cref="CapsuleComponent"/> used to generate overlap events
 	/// </summary>
-	public partial class TriggerCapsule : TriggerBase {
+	public unsafe partial class TriggerCapsule : TriggerBase {
 		internal override ActorType Type => ActorType.TriggerCapsule;
 
 		private protected TriggerCapsule() { }
@@ -4451,9 +5493,41 @@ namespace UnrealEngine.Framework {
 	}
 
 	/// <summary>
+	/// Defines the game being played, instantiated only on the server
+	/// </summary>
+	public unsafe partial class GameModeBase : Actor {
+		internal override ActorType Type => ActorType.GameModeBase;
+
+		private protected GameModeBase() { }
+
+		internal GameModeBase(IntPtr pointer) => Pointer = pointer;
+
+		/// <summary>
+		/// Gets or sets whether the game perform seamless map travels which loads in the background and doesn't disconnect clients
+		/// </summary>
+		public bool UseSeamlessTravel {
+			get => getUseSeamlessTravel(Pointer);
+			set => setUseSeamlessTravel(Pointer, value);
+		}
+
+		/// <summary>
+		/// Swaps player controllers
+		/// </summary>
+		public void SwapPlayerControllers(PlayerController playerController, PlayerController newPlayerController) {
+			if (playerController == null)
+				throw new ArgumentNullException(nameof(playerController));
+
+			if (newPlayerController == null)
+				throw new ArgumentNullException(nameof(newPlayerController));
+
+			swapPlayerControllers(Pointer, playerController.Pointer, newPlayerController.Pointer);
+		}
+	}
+
+	/// <summary>
 	/// The base class of actors that can be possessed by players or AI
 	/// </summary>
-	public partial class Pawn : Actor {
+	public unsafe partial class Pawn : Actor {
 		internal override ActorType Type => ActorType.Pawn;
 
 		private protected Pawn() { }
@@ -4473,6 +5547,96 @@ namespace UnrealEngine.Framework {
 				throw new InvalidOperationException();
 
 			Pointer = spawn(name, Type, blueprint != null ? blueprint.Pointer : IntPtr.Zero);
+		}
+
+		/// <summary>
+		/// Returns <c>true</c> if the pawn is possesed by a <see cref="Controller"/>
+		/// </summary>
+		public bool IsControlled => isControlled(Pointer);
+
+		/// <summary>
+		/// Returns <c>true</c> if the pawn is possesed by a <see cref="PlayerController"/>
+		/// </summary>
+		public bool IsPlayerControlled => isPlayerControlled(Pointer);
+
+		/// <summary>
+		/// Gets or sets the automatic possession type by an AI controller
+		/// </summary>
+		public AutoPossessAI AutoPossessAI {
+			get => getAutoPossessAI(Pointer);
+			set => setAutoPossessAI(Pointer, value);
+		}
+
+		/// <summary>
+		/// Gets or sets the player index for automatic possession by a player controller
+		/// </summary>
+		public AutoReceiveInput AutoPossessPlayer {
+			get => getAutoPossessPlayer(Pointer);
+			set => setAutoPossessPlayer(Pointer, value);
+		}
+
+		/// <summary>
+		/// Gets or sets whether yaw will be updated to match the controller's control rotation yaw, if controlled by a <see cref="PlayerController"/>
+		/// </summary>
+		public bool UseControllerRotationYaw {
+			get => getUseControllerRotationYaw(Pointer);
+			set => setUseControllerRotationYaw(Pointer, value);
+		}
+
+		/// <summary>
+		/// Gets or sets whether pitch will be updated to match the controller's control rotation pitch, if controlled by a <see cref="PlayerController"/>
+		/// </summary>
+		public bool UseControllerRotationPitch {
+			get => getUseControllerRotationPitch(Pointer);
+			set => setUseControllerRotationPitch(Pointer, value);
+		}
+
+		/// <summary>
+		/// Gets or sets whether roll will be updated to match the controller's control rotation roll, if controlled by a <see cref="PlayerController"/>
+		/// </summary>
+		public bool UseControllerRotationRoll {
+			get => getUseControllerRotationRoll(Pointer);
+			set => setUseControllerRotationRoll(Pointer, value);
+		}
+
+		/// <summary>
+		/// Retrieves vector direction of gravity
+		/// </summary>
+		public void GetGravityDirection(ref Vector3 value) => getGravityDirection(Pointer, ref value);
+
+		/// <summary>
+		/// Returns vector direction of gravity
+		/// </summary>
+		public Vector3 GetGravityDirection() {
+			Vector3 value = default;
+
+			getGravityDirection(Pointer, ref value);
+
+			return value;
+		}
+
+		/// <summary>
+		/// Returns the AI controller or <c>null</c> on failure
+		/// </summary>
+		public AIController GetAIController() {
+			IntPtr pointer = getAIController(Pointer);
+
+			if (pointer != IntPtr.Zero)
+				return new(pointer);
+
+			return null;
+		}
+
+		/// <summary>
+		/// Returns the player controller or <c>null</c> on failure
+		/// </summary>
+		public PlayerController GetPlayerController() {
+			IntPtr pointer = getPlayerController(Pointer);
+
+			if (pointer != IntPtr.Zero)
+				return new(pointer);
+
+			return null;
 		}
 
 		/// <summary>
@@ -4497,28 +5661,12 @@ namespace UnrealEngine.Framework {
 		/// <param name="scaleValue">Scale to apply to input, 0.5f applies half the normal value, while -1.0 would reverse the direction</param>
 		/// <param name="force">If <c>true</c>, always add the input, ignoring the result of <see cref="Controller.IsMoveInputIgnored"/></param>
 		public void AddMovementInput(in Vector3 worldDirection, float scaleValue = 1.0f, bool force = false) => addMovementInput(Pointer, worldDirection, scaleValue, force);
-
-		/// <summary>
-		/// Retrieves vector direction of gravity
-		/// </summary>
-		public void GetGravityDirection(ref Vector3 value) => getGravityDirection(Pointer, ref value);
-
-		/// <summary>
-		/// Returns vector direction of gravity
-		/// </summary>
-		public Vector3 GetGravityDirection() {
-			Vector3 value = default;
-
-			getGravityDirection(Pointer, ref value);
-
-			return value;
-		}
 	}
 
 	/// <summary>
 	/// Represents a character that have a mesh, collision, and built-in movement logic
 	/// </summary>
-	public partial class Character : Pawn {
+	public unsafe partial class Character : Pawn {
 		internal override ActorType Type => ActorType.Character;
 
 		private protected Character() { }
@@ -4539,12 +5687,72 @@ namespace UnrealEngine.Framework {
 
 			Pointer = spawn(name, Type, blueprint != null ? blueprint.Pointer : IntPtr.Zero);
 		}
+
+		/// <summary>
+		/// Returns <c>true</c> if the character is currently crouched
+		/// </summary>
+		public bool IsCrouched => isCrouched(Pointer);
+
+		/// <summary>
+		/// Returns <c>true</c> if the character can crouch
+		/// </summary>
+		public bool CanCrouch => canCrouch(Pointer);
+
+		/// <summary>
+		/// Returns <c>true</c> if the character can jump
+		/// </summary>
+		public bool CanJump => canJump(Pointer);
+
+		/// <summary>
+		/// Triggers jump if a jump button is pressed
+		/// </summary>
+		public void CheckJumpInput(float deltaTime) => checkJumpInput(Pointer, deltaTime);
+
+		/// <summary>
+		/// Updates jump input state after checking input
+		/// </summary>
+		public void ClearJumpInput(float deltaTime) => clearJumpInput(Pointer, deltaTime);
+
+		/// <summary>
+		/// Launches the character using the specified velocity
+		/// </summary>
+		public void Launch(in Vector3 velocity, bool overrideXY = false, bool overrideZ = false) => launch(Pointer, velocity, overrideXY, overrideZ);
+
+		/// <summary>
+		/// Starts the character crouching on the next update
+		/// </summary>
+		public void Crouch() => crouch(Pointer);
+
+		/// <summary>
+		/// Stops the character crouching on the next update
+		/// </summary>
+		public void StopCrouching() => stopCrouching(Pointer);
+
+		/// <summary>
+		/// Starts the character jumping on the next update
+		/// </summary>
+		public void Jump() => jump(Pointer);
+
+		/// <summary>
+		/// Stops the character from jumping on the next update
+		/// </summary>
+		public void StopJumping() => stopJumping(Pointer);
+
+		/// <summary>
+		/// Sets the callback function that is called when the character landing after falling
+		/// </summary>
+		public void SetOnLandedCallback(CharacterLandedDelegate callback) {
+			if (callback == null)
+				throw new ArgumentNullException(nameof(callback));
+
+			setOnLandedCallback(Pointer, Collector.GetFunctionPointer(callback));
+		}
 	}
 
 	/// <summary>
 	/// Non-physical actors that can possess a <see cref="Pawn"/> to control its actions
 	/// </summary>
-	public abstract partial class Controller : Actor {
+	public abstract unsafe partial class Controller : Actor {
 		private protected Controller() { }
 
 		/// <summary>
@@ -4569,9 +5777,65 @@ namespace UnrealEngine.Framework {
 			IntPtr pointer = getPawn(Pointer);
 
 			if (pointer != IntPtr.Zero)
-				return new Pawn(pointer);
+				return new(pointer);
 
 			return null;
+		}
+
+		/// <summary>
+		/// Returns the character or <c>null</c> on failure
+		/// </summary>
+		public Character GetCharacter() {
+			IntPtr pointer = getCharacter(Pointer);
+
+			if (pointer != IntPtr.Zero)
+				return new(pointer);
+
+			return null;
+		}
+
+		/// <summary>
+		/// Returns the actor the controller is looking at or <c>null</c> on failure
+		/// </summary>
+		public Actor GetViewTarget() {
+			IntPtr pointer = getViewTarget(Pointer);
+
+			if (pointer != IntPtr.Zero)
+				return new(pointer);
+
+			return null;
+		}
+
+		/// <summary>
+		/// Retrieves the control rotation which is a full aim rotation
+		/// </summary>
+		public void GetControlRotation(ref Quaternion value) => getControlRotation(Pointer, ref value);
+
+		/// <summary>
+		/// Returns the control rotation which is a full aim rotation
+		/// </summary>
+		public Quaternion GetControlRotation() {
+			Quaternion value = default;
+
+			getControlRotation(Pointer, ref value);
+
+			return value;
+		}
+
+		/// <summary>
+		/// Retrieves the target rotation of the pawn
+		/// </summary>
+		public void GetDesiredRotation(ref Quaternion value) => getDesiredRotation(Pointer, ref value);
+
+		/// <summary>
+		/// Returns the target rotation of the pawn
+		/// </summary>
+		public Quaternion GetDesiredRotation() {
+			Quaternion value = default;
+
+			getDesiredRotation(Pointer, ref value);
+
+			return value;
 		}
 
 		/// <summary>
@@ -4587,6 +5851,11 @@ namespace UnrealEngine.Framework {
 
 			return lineOfSightTo(Pointer, actor.Pointer, viewPoint, alternateChecks);
 		}
+
+		/// <summary>
+		/// Sets the control rotation which is a full aim rotation
+		/// </summary>
+		public void SetControlRotation(in Quaternion value) => setControlRotation(Pointer, value);
 
 		/// <summary>
 		/// Sets the initial location and rotation of the controller, as well as the control rotation
@@ -4612,12 +5881,27 @@ namespace UnrealEngine.Framework {
 		/// Stops ignoring move input by resetting the ignore move input state
 		/// </summary>
 		public void ResetIgnoreMoveInput() => resetIgnoreMoveInput(Pointer);
+
+		/// <summary>
+		/// Handles attaching the controller to the specified pawn
+		/// </summary>
+		public void Possess(Pawn pawn) {
+			if (pawn == null)
+				throw new ArgumentNullException(nameof(pawn));
+
+			possess(Pointer, pawn.Pointer);
+		}
+
+		/// <summary>
+		/// Relinquishes control of the pawn
+		/// </summary>
+		public void Unpossess() => unpossess(Pointer);
 	}
 
 	/// <summary>
 	/// The base class of controllers for an AI-controlled <see cref="Pawn"/>
 	/// </summary>
-	public partial class AIController : Controller {
+	public unsafe partial class AIController : Controller {
 		internal override ActorType Type => ActorType.AIController;
 
 		private protected AIController() { }
@@ -4680,7 +5964,7 @@ namespace UnrealEngine.Framework {
 			IntPtr pointer = getFocusActor(Pointer);
 
 			if (pointer != IntPtr.Zero)
-				return new Actor(pointer);
+				return new(pointer);
 
 			return null;
 		}
@@ -4699,7 +5983,7 @@ namespace UnrealEngine.Framework {
 	/// <summary>
 	/// An actor that is used by human players to control a <see cref="Pawn"/>
 	/// </summary>
-	public partial class PlayerController : Controller {
+	public unsafe partial class PlayerController : Controller {
 		internal override ActorType Type => ActorType.PlayerController;
 
 		private protected PlayerController() { }
@@ -4735,6 +6019,22 @@ namespace UnrealEngine.Framework {
 		}
 
 		/// <summary>
+		/// Gets or sets whether click events should be generated
+		/// </summary>
+		public bool EnableClickEvents {
+			get => getEnableClickEvents(Pointer);
+			set => setEnableClickEvents(Pointer, value);
+		}
+
+		/// <summary>
+		/// Gets or sets whether the mouse over events should be generated
+		/// </summary>
+		public bool EnableMouseOverEvents {
+			get => getEnableMouseOverEvents(Pointer);
+			set => setEnableMouseOverEvents(Pointer, value);
+		}
+
+		/// <summary>
 		/// Retrieves the X and Y screen coordinates of the mouse cursor
 		/// </summary>
 		/// <returns><c>true</c> if successful</returns>
@@ -4747,7 +6047,7 @@ namespace UnrealEngine.Framework {
 			IntPtr pointer = getPlayer(Pointer);
 
 			if (pointer != IntPtr.Zero)
-				return new Player(pointer);
+				return new(pointer);
 
 			return null;
 		}
@@ -4759,10 +6059,22 @@ namespace UnrealEngine.Framework {
 			IntPtr pointer = getPlayerInput(Pointer);
 
 			if (pointer != IntPtr.Zero)
-				return new PlayerInput(pointer);
+				return new(pointer);
 
 			return null;
 		}
+
+		/// <summary>
+		/// Retrieves the first blocking hit from the position on the screen
+		/// </summary>
+		/// <returns><c>true</c> on success</returns>
+		public bool GetHitResultAtScreenPosition(in Vector2 screenPosition, CollisionChannel traceChannel, ref Hit hit, bool traceComplex = false) => getHitResultAtScreenPosition(Pointer, screenPosition, traceChannel, ref hit, traceComplex);
+
+		/// <summary>
+		/// Retrieves the first blocking hit under the mouse cursor
+		/// </summary>
+		/// <returns><c>true</c> on success</returns>
+		public bool GetHitResultUnderCursor(CollisionChannel traceChannel, ref Hit hit, bool traceComplex = false) => getHitResultUnderCursor(Pointer, traceChannel, ref hit, traceComplex);
 
 		/// <summary>
 		/// Positions the mouse cursor in screen space, in pixels
@@ -4827,7 +6139,7 @@ namespace UnrealEngine.Framework {
 	/// <summary>
 	/// The base class of brushes for level construction
 	/// </summary>
-	public partial class Brush : Actor {
+	public unsafe partial class Brush : Actor {
 		internal override ActorType Type => ActorType.Brush;
 
 		private protected Brush() { }
@@ -4853,7 +6165,7 @@ namespace UnrealEngine.Framework {
 	/// <summary>
 	/// An editable 3D volume placed in a level, different types of volumes perform different functions
 	/// </summary>
-	public abstract partial class Volume : Brush {
+	public abstract unsafe partial class Volume : Brush {
 		private protected Volume() { }
 
 		/// <summary>
@@ -4865,7 +6177,7 @@ namespace UnrealEngine.Framework {
 	/// <summary>
 	/// An actor that is used to trigger events
 	/// </summary>
-	public partial class TriggerVolume : Volume {
+	public unsafe partial class TriggerVolume : Volume {
 		internal override ActorType Type => ActorType.TriggerVolume;
 
 		private protected TriggerVolume() { }
@@ -4891,7 +6203,7 @@ namespace UnrealEngine.Framework {
 	/// <summary>
 	/// An actor that is used for post-processing manipulations
 	/// </summary>
-	public partial class PostProcessVolume : Volume {
+	public unsafe partial class PostProcessVolume : Volume {
 		internal override ActorType Type => ActorType.PostProcessVolume;
 
 		private protected PostProcessVolume() { }
@@ -4957,7 +6269,7 @@ namespace UnrealEngine.Framework {
 	/// <summary>
 	/// A representation of the level-wide logic defined in the level blueprint
 	/// </summary>
-	public partial class LevelScript : Actor {
+	public unsafe partial class LevelScript : Actor {
 		internal override ActorType Type => ActorType.LevelScript;
 
 		private protected LevelScript() { }
@@ -4968,7 +6280,7 @@ namespace UnrealEngine.Framework {
 	/// <summary>
 	/// A sound actor that can be placed in a level
 	/// </summary>
-	public partial class AmbientSound : Actor {
+	public unsafe partial class AmbientSound : Actor {
 		internal override ActorType Type => ActorType.AmbientSound;
 
 		private protected AmbientSound() { }
@@ -4994,58 +6306,118 @@ namespace UnrealEngine.Framework {
 	/// <summary>
 	/// A light actor that can be placed in a level
 	/// </summary>
-	public abstract partial class Light : Actor {
+	public abstract unsafe partial class Light : Actor {
 		private protected Light() { }
 	}
 
 	/// <summary>
 	/// Simulates light that is being emitted from a source that is infinitely far away
 	/// </summary>
-	public partial class DirectionalLight : Light {
+	public unsafe partial class DirectionalLight : Light {
 		internal override ActorType Type => ActorType.DirectionalLight;
 
 		private protected DirectionalLight() { }
 
 		internal DirectionalLight(IntPtr pointer) => Pointer = pointer;
+
+		/// <summary>
+		/// Spawns the actor in the world
+		/// </summary>
+		/// <param name="name">The name of the actor</param>
+		/// <param name="blueprint">The blueprint class to use as a base class, should be equal to the exact type of the actor</param>
+		public DirectionalLight(string name = null, Blueprint blueprint = null) {
+			if (name?.Length == 0)
+				name = null;
+
+			if (blueprint != null && !blueprint.IsValidClass(Type))
+				throw new InvalidOperationException();
+
+			Pointer = spawn(name, Type, blueprint != null ? blueprint.Pointer : IntPtr.Zero);
+		}
 	}
 
 	/// <summary>
 	/// Emits light in all directions from the light bulb's tungsten filament
 	/// </summary>
-	public partial class PointLight : Light {
+	public unsafe partial class PointLight : Light {
 		internal override ActorType Type => ActorType.PointLight;
 
 		private protected PointLight() { }
 
 		internal PointLight(IntPtr pointer) => Pointer = pointer;
+
+		/// <summary>
+		/// Spawns the actor in the world
+		/// </summary>
+		/// <param name="name">The name of the actor</param>
+		/// <param name="blueprint">The blueprint class to use as a base class, should be equal to the exact type of the actor</param>
+		public PointLight(string name = null, Blueprint blueprint = null) {
+			if (name?.Length == 0)
+				name = null;
+
+			if (blueprint != null && !blueprint.IsValidClass(Type))
+				throw new InvalidOperationException();
+
+			Pointer = spawn(name, Type, blueprint != null ? blueprint.Pointer : IntPtr.Zero);
+		}
 	}
 
 	/// <summary>
 	/// Emits light into the scene from a rectangular plane with a defined width and height
 	/// </summary>
-	public partial class RectLight : Light {
+	public unsafe partial class RectLight : Light {
 		internal override ActorType Type => ActorType.RectLight;
 
 		private protected RectLight() { }
 
 		internal RectLight(IntPtr pointer) => Pointer = pointer;
+
+		/// <summary>
+		/// Spawns the actor in the world
+		/// </summary>
+		/// <param name="name">The name of the actor</param>
+		/// <param name="blueprint">The blueprint class to use as a base class, should be equal to the exact type of the actor</param>
+		public RectLight(string name = null, Blueprint blueprint = null) {
+			if (name?.Length == 0)
+				name = null;
+
+			if (blueprint != null && !blueprint.IsValidClass(Type))
+				throw new InvalidOperationException();
+
+			Pointer = spawn(name, Type, blueprint != null ? blueprint.Pointer : IntPtr.Zero);
+		}
 	}
 
 	/// <summary>
 	/// Emits light from a single point in a cone shape
 	/// </summary>
-	public partial class SpotLight : Light {
+	public unsafe partial class SpotLight : Light {
 		internal override ActorType Type => ActorType.SpotLight;
 
 		private protected SpotLight() { }
 
 		internal SpotLight(IntPtr pointer) => Pointer = pointer;
+
+		/// <summary>
+		/// Spawns the actor in the world
+		/// </summary>
+		/// <param name="name">The name of the actor</param>
+		/// <param name="blueprint">The blueprint class to use as a base class, should be equal to the exact type of the actor</param>
+		public SpotLight(string name = null, Blueprint blueprint = null) {
+			if (name?.Length == 0)
+				name = null;
+
+			if (blueprint != null && !blueprint.IsValidClass(Type))
+				throw new InvalidOperationException();
+
+			Pointer = spawn(name, Type, blueprint != null ? blueprint.Pointer : IntPtr.Zero);
+		}
 	}
 
 	/// <summary>
 	/// The base class of playable sound objects
 	/// </summary>
-	public abstract partial class SoundBase : IEquatable<SoundBase> {
+	public abstract unsafe partial class SoundBase : IEquatable<SoundBase> {
 		private IntPtr pointer;
 
 		internal IntPtr Pointer {
@@ -5092,7 +6464,7 @@ namespace UnrealEngine.Framework {
 	/// <summary>
 	/// A playable sound object for raw wave files
 	/// </summary>
-	public partial class SoundWave : SoundBase {
+	public unsafe partial class SoundWave : SoundBase {
 		private protected SoundWave() { }
 
 		internal SoundWave(IntPtr pointer) => Pointer = pointer;
@@ -5108,7 +6480,7 @@ namespace UnrealEngine.Framework {
 			IntPtr pointer = Object.load(ObjectType.SoundWave, name);
 
 			if (pointer != IntPtr.Zero)
-				return new SoundWave(pointer);
+				return new(pointer);
 
 			return null;
 		}
@@ -5125,7 +6497,7 @@ namespace UnrealEngine.Framework {
 	/// <summary>
 	/// The base class of animation assets that can be played and evaluated to produce a pose
 	/// </summary>
-	public abstract partial class AnimationAsset : IEquatable<AnimationAsset> {
+	public abstract unsafe partial class AnimationAsset : IEquatable<AnimationAsset> {
 		private IntPtr pointer;
 
 		internal IntPtr Pointer {
@@ -5167,14 +6539,14 @@ namespace UnrealEngine.Framework {
 	/// <summary>
 	/// The base class of animation sequences
 	/// </summary>
-	public abstract partial class AnimationSequenceBase : AnimationAsset {
+	public abstract unsafe partial class AnimationSequenceBase : AnimationAsset {
 		private protected AnimationSequenceBase() { }
 	}
 
 	/// <summary>
 	/// A single animation asset that can be played
 	/// </summary>
-	public partial class AnimationSequence : AnimationSequenceBase {
+	public unsafe partial class AnimationSequence : AnimationSequenceBase {
 		private protected AnimationSequence() { }
 
 		internal AnimationSequence(IntPtr pointer) => Pointer = pointer;
@@ -5190,7 +6562,7 @@ namespace UnrealEngine.Framework {
 			IntPtr pointer = Object.load(ObjectType.AnimationSequence, name);
 
 			if (pointer != IntPtr.Zero)
-				return new AnimationSequence(pointer);
+				return new(pointer);
 
 			return null;
 		}
@@ -5199,14 +6571,14 @@ namespace UnrealEngine.Framework {
 	/// <summary>
 	/// The base class of animation composites
 	/// </summary>
-	public abstract partial class AnimationCompositeBase : AnimationSequenceBase {
+	public abstract unsafe partial class AnimationCompositeBase : AnimationSequenceBase {
 		private protected AnimationCompositeBase() { }
 	}
 
 	/// <summary>
 	/// A single animation asset that can combine and selectively play animations
 	/// </summary>
-	public partial class AnimationMontage : AnimationCompositeBase {
+	public unsafe partial class AnimationMontage : AnimationCompositeBase {
 		private protected AnimationMontage() { }
 
 		internal AnimationMontage(IntPtr pointer) => Pointer = pointer;
@@ -5222,7 +6594,7 @@ namespace UnrealEngine.Framework {
 			IntPtr pointer = Object.load(ObjectType.AnimationMontage, name);
 
 			if (pointer != IntPtr.Zero)
-				return new AnimationMontage(pointer);
+				return new(pointer);
 
 			return null;
 		}
@@ -5231,7 +6603,7 @@ namespace UnrealEngine.Framework {
 	/// <summary>
 	/// An animation instance representation
 	/// </summary>
-	public partial class AnimationInstance : IEquatable<AnimationInstance> {
+	public unsafe partial class AnimationInstance : IEquatable<AnimationInstance> {
 		private IntPtr pointer;
 
 		internal IntPtr Pointer {
@@ -5369,6 +6741,44 @@ namespace UnrealEngine.Framework {
 		}
 
 		/// <summary>
+		/// Retrieves the value of the enum property
+		/// </summary>
+		/// <returns><c>true</c> on success</returns>
+		public bool GetEnum<T>(string name, ref T value) where T : Enum {
+			if (name == null)
+				throw new ArgumentNullException(nameof(name));
+
+			int data = 0;
+
+			if (Object.getEnum(Pointer, name, ref data)) {
+				value = (T)Enum.ToObject(typeof(T), data);
+
+				return true;
+			}
+
+			return false;
+		}
+
+		/// <summary>
+		/// Retrieves the value of the string property
+		/// </summary>
+		/// <returns><c>true</c> on success</returns>
+		public bool GetString(string name, ref string value) {
+			if (name == null)
+				throw new ArgumentNullException(nameof(name));
+
+			byte[] stringBuffer = ArrayPool.GetStringBuffer();
+
+			if (Object.getString(Pointer, name, stringBuffer)) {
+				value = stringBuffer.BytesToString();
+
+				return true;
+			}
+
+			return false;
+		}
+
+		/// <summary>
 		/// Retrieves the value of the text property
 		/// </summary>
 		/// <returns><c>true</c> on success</returns>
@@ -5379,7 +6789,7 @@ namespace UnrealEngine.Framework {
 			byte[] stringBuffer = ArrayPool.GetStringBuffer();
 
 			if (Object.getText(Pointer, name, stringBuffer)) {
-				value = Encoding.UTF8.GetString(stringBuffer).TrimFromZero();
+				value = stringBuffer.BytesToString();
 
 				return true;
 			}
@@ -5497,6 +6907,31 @@ namespace UnrealEngine.Framework {
 		}
 
 		/// <summary>
+		/// Sets the value of the enum property
+		/// </summary>
+		/// <returns><c>true</c> on success</returns>
+		public bool SetEnum<T>(string name, T value) where T : Enum {
+			if (name == null)
+				throw new ArgumentNullException(nameof(name));
+
+			return Object.setEnum(Pointer, name, Convert.ToInt32(value));
+		}
+
+		/// <summary>
+		/// Sets the value of the string property
+		/// </summary>
+		/// <returns><c>true</c> on success</returns>
+		public bool SetString(string name, string value) {
+			if (name == null)
+				throw new ArgumentNullException(nameof(name));
+
+			if (value == null)
+				throw new ArgumentNullException(nameof(value));
+
+			return Object.setString(Pointer, name, value);
+		}
+
+		/// <summary>
 		/// Sets the value of the text property
 		/// </summary>
 		/// <returns><c>true</c> on success</returns>
@@ -5521,13 +6956,18 @@ namespace UnrealEngine.Framework {
 		public override int GetHashCode() => pointer.GetHashCode();
 
 		/// <summary>
+		/// Invokes a command, function, or an event with optional arguments
+		/// </summary>
+		public bool Invoke(string command) => Object.invoke(Pointer, Encoding.UTF8.GetBytes(command));
+
+		/// <summary>
 		/// Returns the current active animation montage or <c>null</c> on failure
 		/// </summary>
 		public AnimationMontage GetCurrentActiveMontage() {
 			IntPtr pointer = getCurrentActiveMontage(Pointer);
 
 			if (pointer != IntPtr.Zero)
-				return new AnimationMontage(pointer);
+				return new(pointer);
 
 			return null;
 		}
@@ -5583,7 +7023,7 @@ namespace UnrealEngine.Framework {
 
 			getCurrentSection(Pointer, montage.Pointer, stringBuffer);
 
-			return Encoding.UTF8.GetString(stringBuffer).TrimFromZero();
+			return stringBuffer.BytesToString();
 		}
 
 		/// <summary>
@@ -5682,7 +7122,7 @@ namespace UnrealEngine.Framework {
 	/// <summary>
 	/// A player representation
 	/// </summary>
-	public partial class Player : IEquatable<Player> {
+	public unsafe partial class Player : IEquatable<Player> {
 		private IntPtr pointer;
 
 		internal IntPtr Pointer {
@@ -5727,7 +7167,7 @@ namespace UnrealEngine.Framework {
 			IntPtr pointer = getPlayerController(Pointer);
 
 			if (pointer != IntPtr.Zero)
-				return new PlayerController(pointer);
+				return new(pointer);
 
 			return null;
 		}
@@ -5736,7 +7176,7 @@ namespace UnrealEngine.Framework {
 	/// <summary>
 	/// An input manager of <see cref="PlayerController"/>
 	/// </summary>
-	public partial class PlayerInput : IEquatable<PlayerInput> {
+	public unsafe partial class PlayerInput : IEquatable<PlayerInput> {
 		private IntPtr pointer;
 
 		internal IntPtr Pointer {
@@ -5864,7 +7304,7 @@ namespace UnrealEngine.Framework {
 	/// <summary>
 	/// An asset that provides an intuitive node-based interface
 	/// </summary>
-	public partial class Blueprint : IEquatable<Blueprint> {
+	public unsafe partial class Blueprint : IEquatable<Blueprint> {
 		private IntPtr pointer;
 
 		internal IntPtr Pointer {
@@ -5917,16 +7357,79 @@ namespace UnrealEngine.Framework {
 			IntPtr pointer = Object.load(ObjectType.Blueprint, name);
 
 			if (pointer != IntPtr.Zero)
-				return new Blueprint(pointer);
+				return new(pointer);
 
 			return null;
 		}
 	}
 
 	/// <summary>
+	/// A font object that is used to draw text
+	/// </summary>
+	public unsafe partial class Font : IEquatable<Font> {
+		private IntPtr pointer;
+
+		internal IntPtr Pointer {
+			get {
+				if (!IsCreated)
+					throw new InvalidOperationException();
+
+				return pointer;
+			}
+
+			set {
+				if (value == IntPtr.Zero)
+					throw new InvalidOperationException();
+
+				pointer = value;
+			}
+		}
+
+		private protected Font() { }
+
+		internal Font(IntPtr pointer) => Pointer = pointer;
+
+		/// <summary>
+		/// Returns <c>true</c> if the object is created
+		/// </summary>
+		public bool IsCreated => pointer != IntPtr.Zero && Object.isValid(pointer);
+
+		/// <summary>
+		/// Indicates equality of objects
+		/// </summary>
+		public bool Equals(Font other) => IsCreated && pointer == other?.pointer;
+
+		/// <summary>
+		/// Returns a hash code for the object
+		/// </summary>
+		public override int GetHashCode() => pointer.GetHashCode();
+
+		/// <summary>
+		/// Finds and loads a font by name
+		/// </summary>
+		/// <returns>A font or <c>null</c> on failure</returns>
+		public static Font Load(string name) {
+			if (name == null)
+				throw new ArgumentNullException(nameof(name));
+
+			IntPtr pointer = Object.load(ObjectType.Font, name);
+
+			if (pointer != IntPtr.Zero)
+				return new(pointer);
+
+			return null;
+		}
+
+		/// <summary>
+		/// Retrieves height and width for a string
+		/// </summary>
+		public void GetStringSize(string text, ref int height, ref int width) => getStringSize(Pointer, text, ref height, ref width);
+	}
+
+	/// <summary>
 	/// A render asset that can be streamed at runtime
 	/// </summary>
-	public abstract partial class StreamableRenderAsset : IEquatable<StreamableRenderAsset> {
+	public abstract unsafe partial class StreamableRenderAsset : IEquatable<StreamableRenderAsset> {
 		private IntPtr pointer;
 
 		internal IntPtr Pointer {
@@ -5966,7 +7469,7 @@ namespace UnrealEngine.Framework {
 	/// <summary>
 	/// A piece of geometry that consists of a static set of polygons
 	/// </summary>
-	public partial class StaticMesh : StreamableRenderAsset {
+	public unsafe partial class StaticMesh : StreamableRenderAsset {
 		private protected StaticMesh() { }
 
 		internal StaticMesh(IntPtr pointer) => Pointer = pointer;
@@ -6007,7 +7510,7 @@ namespace UnrealEngine.Framework {
 			IntPtr pointer = Object.load(ObjectType.StaticMesh, name);
 
 			if (pointer != IntPtr.Zero)
-				return new StaticMesh(pointer);
+				return new(pointer);
 
 			return null;
 		}
@@ -6016,7 +7519,7 @@ namespace UnrealEngine.Framework {
 	/// <summary>
 	/// A geometry bound to a hierarchical skeleton of bones which can be animated
 	/// </summary>
-	public partial class SkeletalMesh : StreamableRenderAsset {
+	public unsafe partial class SkeletalMesh : StreamableRenderAsset {
 		private protected SkeletalMesh() { }
 
 		internal SkeletalMesh(IntPtr pointer) => Pointer = pointer;
@@ -6032,7 +7535,7 @@ namespace UnrealEngine.Framework {
 			IntPtr pointer = Object.load(ObjectType.SkeletalMesh, name);
 
 			if (pointer != IntPtr.Zero)
-				return new SkeletalMesh(pointer);
+				return new(pointer);
 
 			return null;
 		}
@@ -6041,17 +7544,37 @@ namespace UnrealEngine.Framework {
 	/// <summary>
 	/// A representation of the surface of an object
 	/// </summary>
-	public abstract partial class Texture : StreamableRenderAsset {
+	public abstract unsafe partial class Texture : StreamableRenderAsset {
 		private protected Texture() { }
 	}
 
 	/// <summary>
-	/// A single texture asset
+	/// A texture asset
 	/// </summary>
-	public partial class Texture2D : Texture {
+	public unsafe partial class Texture2D : Texture {
 		private protected Texture2D() { }
 
 		internal Texture2D(IntPtr pointer) => Pointer = pointer;
+
+		/// <summary>
+		/// Creates a texture asset from a raw PNG, JPEG, BMP, or EXR image file
+		/// </summary>
+		public Texture2D(string filePath) {
+			if (filePath == null)
+				throw new ArgumentNullException(nameof(filePath));
+
+			Pointer = createFromFile(filePath);
+		}
+
+		/// <summary>
+		/// Creates a texture asset from a raw PNG, JPEG, BMP, or EXR image buffer
+		/// </summary>
+		public Texture2D(byte[] buffer, int length) {
+			if (buffer == null)
+				throw new ArgumentNullException(nameof(buffer));
+
+			Pointer = createFromBuffer(buffer, length);
+		}
 
 		/// <summary>
 		/// Finds and loads a texture by name
@@ -6064,10 +7587,15 @@ namespace UnrealEngine.Framework {
 			IntPtr pointer = Object.load(ObjectType.Texture2D, name);
 
 			if (pointer != IntPtr.Zero)
-				return new Texture2D(pointer);
+				return new(pointer);
 
 			return null;
 		}
+
+		/// <summary>
+		/// Returns <c>true</c> if the runtime texture has an alpha channel that is not completely white
+		/// </summary>
+		public bool HasAlphaChannel => hasAlphaChannel(Pointer);
 
 		/// <summary>
 		/// Retrieves size of the texture
@@ -6084,12 +7612,17 @@ namespace UnrealEngine.Framework {
 
 			return value;
 		}
+
+		/// <summary>
+		/// Returns the pixel format
+		/// </summary>
+		public PixelFormat GetPixelFormat() => getPixelFormat(Pointer);
 	}
 
 	/// <summary>
 	/// The base class of components that define reusable behavior and can be added to different types of actors
 	/// </summary>
-	public partial class ActorComponent : IEquatable<ActorComponent> {
+	public abstract unsafe partial class ActorComponent : IEquatable<ActorComponent> {
 		private IntPtr pointer;
 
 		internal IntPtr Pointer {
@@ -6133,7 +7666,7 @@ namespace UnrealEngine.Framework {
 
 				Object.getName(Pointer, stringBuffer);
 
-				return Encoding.UTF8.GetString(stringBuffer).TrimFromZero();
+				return stringBuffer.BytesToString();
 			}
 		}
 
@@ -6247,6 +7780,44 @@ namespace UnrealEngine.Framework {
 		}
 
 		/// <summary>
+		/// Retrieves the value of the enum property
+		/// </summary>
+		/// <returns><c>true</c> on success</returns>
+		public bool GetEnum<T>(string name, ref T value) where T : Enum {
+			if (name == null)
+				throw new ArgumentNullException(nameof(name));
+
+			int data = 0;
+
+			if (Object.getEnum(Pointer, name, ref data)) {
+				value = (T)Enum.ToObject(typeof(T), data);
+
+				return true;
+			}
+
+			return false;
+		}
+
+		/// <summary>
+		/// Retrieves the value of the string property
+		/// </summary>
+		/// <returns><c>true</c> on success</returns>
+		public bool GetString(string name, ref string value) {
+			if (name == null)
+				throw new ArgumentNullException(nameof(name));
+
+			byte[] stringBuffer = ArrayPool.GetStringBuffer();
+
+			if (Object.getString(Pointer, name, stringBuffer)) {
+				value = stringBuffer.BytesToString();
+
+				return true;
+			}
+
+			return false;
+		}
+
+		/// <summary>
 		/// Retrieves the value of the text property
 		/// </summary>
 		/// <returns><c>true</c> on success</returns>
@@ -6257,7 +7828,7 @@ namespace UnrealEngine.Framework {
 			byte[] stringBuffer = ArrayPool.GetStringBuffer();
 
 			if (Object.getText(Pointer, name, stringBuffer)) {
-				value = Encoding.UTF8.GetString(stringBuffer).TrimFromZero();
+				value = stringBuffer.BytesToString();
 
 				return true;
 			}
@@ -6375,6 +7946,31 @@ namespace UnrealEngine.Framework {
 		}
 
 		/// <summary>
+		/// Sets the value of the enum property
+		/// </summary>
+		/// <returns><c>true</c> on success</returns>
+		public bool SetEnum<T>(string name, T value) where T : Enum {
+			if (name == null)
+				throw new ArgumentNullException(nameof(name));
+
+			return Object.setEnum(Pointer, name, Convert.ToInt32(value));
+		}
+
+		/// <summary>
+		/// Sets the value of the string property
+		/// </summary>
+		/// <returns><c>true</c> on success</returns>
+		public bool SetString(string name, string value) {
+			if (name == null)
+				throw new ArgumentNullException(nameof(name));
+
+			if (value == null)
+				throw new ArgumentNullException(nameof(value));
+
+			return Object.setString(Pointer, name, value);
+		}
+
+		/// <summary>
 		/// Sets the value of the text property
 		/// </summary>
 		/// <returns><c>true</c> on success</returns>
@@ -6409,10 +8005,15 @@ namespace UnrealEngine.Framework {
 		}
 
 		/// <summary>
+		/// Invokes a command, function, or an event with optional arguments
+		/// </summary>
+		public bool Invoke(string command) => Object.invoke(Pointer, Encoding.UTF8.GetBytes(command));
+
+		/// <summary>
 		/// Unregisters the component, removes it from its outer actor's components array and marks for pending kill
 		/// </summary>
-		/// <param name="promoteChildren">Promotes the children component in the hierarchy during the destruction</param>
-		public void Destroy(bool promoteChildren = false) => destroy(Pointer, promoteChildren);
+		/// <param name="promoteChild">Promotes the child component in the hierarchy during the destruction</param>
+		public void Destroy(bool promoteChild = false) => destroy(Pointer, promoteChild);
 
 		/// <summary>
 		/// Returns <c>true</c> if the component's owner is selected in the editor
@@ -6456,7 +8057,7 @@ namespace UnrealEngine.Framework {
 	/// <summary>
 	/// An input component is a transient component that enables an actor to bind various forms of input events to delegate functions
 	/// </summary>
-	public partial class InputComponent : ActorComponent {
+	public unsafe partial class InputComponent : ActorComponent {
 		internal override ComponentType Type => ComponentType.Input;
 
 		private protected InputComponent() { }
@@ -6495,13 +8096,12 @@ namespace UnrealEngine.Framework {
 		public void ClearActionBindings() => clearActionBindings(Pointer);
 
 		/// <summary>
-		/// Binds a static callback function to an action defined in the project settings, or by using <see cref="Engine.AddActionMapping"/> and <see cref="PlayerInput.AddActionMapping"/>
+		/// Binds the callback function to an action defined in the project settings, or by using <see cref="Engine.AddActionMapping"/> and <see cref="PlayerInput.AddActionMapping"/>
 		/// </summary>
 		/// <param name="actionName">The name of the action</param>
 		/// <param name="keyEvent">The type of input behavior</param>
-		/// <param name="callback">The static function to call when the input is triggered</param>
+		/// <param name="callback">The function to call when the input is triggered</param>
 		/// <param name="executedWhenPaused">If <c>true</c>, executes even if the game is paused</param>
-		/// <exception cref="System.ArgumentException">Thrown if <paramref name="callback"/> is not static</exception>
 		public void BindAction(string actionName, InputEvent keyEvent, InputDelegate callback, bool executedWhenPaused = false) {
 			if (actionName == null)
 				throw new ArgumentNullException(nameof(actionName));
@@ -6509,19 +8109,15 @@ namespace UnrealEngine.Framework {
 			if (callback == null)
 				throw new ArgumentNullException(nameof(callback));
 
-			if (!callback.Method.IsStatic)
-				throw new ArgumentException(nameof(callback) + " should be static");
-
-			bindAction(Pointer, actionName, keyEvent, executedWhenPaused, callback.Method.MethodHandle.GetFunctionPointer());
+			bindAction(Pointer, actionName, keyEvent, executedWhenPaused, Collector.GetFunctionPointer(callback));
 		}
 
 		/// <summary>
-		/// Binds a static callback function to an axis defined in the project settings, or by using <see cref="Engine.AddAxisMapping"/> and <see cref="PlayerInput.AddAxisMapping"/>
+		/// Binds the callback function to an axis defined in the project settings, or by using <see cref="Engine.AddAxisMapping"/> and <see cref="PlayerInput.AddAxisMapping"/>
 		/// </summary>
 		/// <param name="axisName">The name of the axis</param>
-		/// <param name="callback">The static function to call while tracking axis</param>
+		/// <param name="callback">The function to call while tracking axis</param>
 		/// <param name="executedWhenPaused">If <c>true</c>, executes even if the game is paused</param>
-		/// <exception cref="System.ArgumentException">Thrown if <paramref name="callback"/> is not static</exception>
 		public void BindAxis(string axisName, InputAxisDelegate callback, bool executedWhenPaused = false) {
 			if (axisName == null)
 				throw new ArgumentNullException(nameof(axisName));
@@ -6529,10 +8125,7 @@ namespace UnrealEngine.Framework {
 			if (callback == null)
 				throw new ArgumentNullException(nameof(callback));
 
-			if (!callback.Method.IsStatic)
-				throw new ArgumentException(nameof(callback) + " should be static");
-
-			bindAxis(Pointer, axisName, executedWhenPaused, callback.Method.MethodHandle.GetFunctionPointer());
+			bindAxis(Pointer, axisName, executedWhenPaused, Collector.GetFunctionPointer(callback));
 		}
 
 		/// <summary>
@@ -6544,7 +8137,7 @@ namespace UnrealEngine.Framework {
 	/// <summary>
 	/// The base class of components that can be transformed or attached, but has no rendering or collision capabilities
 	/// </summary>
-	public partial class SceneComponent : ActorComponent {
+	public unsafe partial class SceneComponent : ActorComponent {
 		internal override ComponentType Type => ComponentType.Scene;
 
 		private protected SceneComponent() { }
@@ -6592,6 +8185,11 @@ namespace UnrealEngine.Framework {
 		}
 
 		/// <summary>
+		/// Returns <c>true</c> if the component is visible in the current context
+		/// </summary>
+		public bool IsVisible => isVisible(Pointer);
+
+		/// <summary>
 		/// Returns <c>true</c> if the a socket with the given name exists
 		/// </summary>
 		public bool IsSocketExists(string socketName) {
@@ -6605,6 +8203,36 @@ namespace UnrealEngine.Framework {
 		/// Returns <c>true</c> if the component has any sockets
 		/// </summary>
 		public bool HasAnySockets => hasAnySockets(Pointer);
+
+		/// <summary>
+		/// Returns <c>true</c> if another scene component can be attached as a child
+		/// </summary>
+		public bool CanAttachAsChild(SceneComponent childComponent, string socketName = null) {
+			if (childComponent == null)
+				throw new ArgumentNullException(nameof(childComponent));
+
+			return canAttachAsChild(Pointer, childComponent.Pointer, socketName);
+		}
+
+		/// <summary>
+		/// Performs the specified action on each attached child component if any
+		/// </summary>
+		public unsafe void ForEachAttachedChild<T>(Action<T> action) where T : SceneComponent {
+			if (action == null)
+				throw new ArgumentNullException(nameof(action));
+
+			ObjectReference* array = null;
+			int elements = 0;
+
+			forEachAttachedChild(Pointer, ref array, ref elements);
+
+			for (int i = 0; i < elements; i++) {
+				T component = array[i].ToComponent<T>();
+
+				if (component != null)
+					action(component);
+			}
+		}
 
 		/// <summary>
 		/// Attaches the component to another component, optionally at a named socket
@@ -6685,8 +8313,13 @@ namespace UnrealEngine.Framework {
 
 			getAttachedSocketName(Pointer, stringBuffer);
 
-			return Encoding.UTF8.GetString(stringBuffer).TrimFromZero();
+			return stringBuffer.BytesToString();
 		}
+
+		/// <summary>
+		/// Retrieves calculated bounds of the component
+		/// </summary>
+		public void GetBounds(in Transform localToWorld, ref Bounds value) => getBounds(Pointer, localToWorld, ref value);
 
 		/// <summary>
 		/// Retrieves location of a socket in world space
@@ -6854,6 +8487,11 @@ namespace UnrealEngine.Framework {
 		public void SetMobility(ComponentMobility mobility) => setMobility(Pointer, mobility);
 
 		/// <summary>
+		/// Sets the visibility of the component
+		/// </summary>
+		public void SetVisibility(bool newVisibility, bool propagateToChildren = false) => setVisibility(Pointer, newVisibility, propagateToChildren);
+
+		/// <summary>
 		/// Sets the location of the component relative to its parent
 		/// </summary>
 		public void SetRelativeLocation(in Vector3 location) => setRelativeLocation(Pointer, location);
@@ -6892,7 +8530,7 @@ namespace UnrealEngine.Framework {
 	/// <summary>
 	/// A component that is used to play a sound
 	/// </summary>
-	public partial class AudioComponent : SceneComponent {
+	public unsafe partial class AudioComponent : SceneComponent {
 		internal override ComponentType Type => ComponentType.Audio;
 
 		private protected AudioComponent() { }
@@ -6933,7 +8571,7 @@ namespace UnrealEngine.Framework {
 		}
 
 		/// <summary>
-		/// Sets a sound object
+		/// Sets the sound object
 		/// </summary>
 		public void SetSound(SoundBase sound) {
 			if (sound == null)
@@ -6973,7 +8611,7 @@ namespace UnrealEngine.Framework {
 	/// <summary>
 	/// Represents a camera viewpoint and settings, such as projection type, field of view, and post-process overrides
 	/// </summary>
-	public partial class CameraComponent : SceneComponent {
+	public unsafe partial class CameraComponent : SceneComponent {
 		internal override ComponentType Type => ComponentType.Camera;
 
 		private protected CameraComponent() { }
@@ -7065,7 +8703,7 @@ namespace UnrealEngine.Framework {
 	/// <summary>
 	/// A component that automatically spawns and destroys a child actor
 	/// </summary>
-	public partial class ChildActorComponent : SceneComponent {
+	public unsafe partial class ChildActorComponent : SceneComponent {
 		internal override ComponentType Type => ComponentType.ChildActor;
 
 		private protected ChildActorComponent() { }
@@ -7093,6 +8731,23 @@ namespace UnrealEngine.Framework {
 		}
 
 		/// <summary>
+		/// Gets the child actor
+		/// </summary>
+		/// <returns>An actor or <c>null</c> on failure</returns>
+		public T GetChildActor<T>() where T : Actor {
+			T actor = FormatterServices.GetUninitializedObject(typeof(T)) as T;
+			IntPtr pointer = getChildActor(Pointer, actor.Type);
+
+			if (pointer != IntPtr.Zero) {
+				actor.Pointer = pointer;
+
+				return actor;
+			}
+
+			return null;
+		}
+
+		/// <summary>
 		/// Sets the child actor
 		/// </summary>
 		/// <returns>An actor or <c>null</c> on failure</returns>
@@ -7111,9 +8766,334 @@ namespace UnrealEngine.Framework {
 	}
 
 	/// <summary>
+	/// A component that maintains its children at a fixed distance from the parent, but will retract the children if there is a collision, and spring back when there is no collision
+	/// </summary>
+	public unsafe partial class SpringArmComponent : SceneComponent {
+		internal override ComponentType Type => ComponentType.SpringArm;
+
+		private protected SpringArmComponent() { }
+
+		internal SpringArmComponent(IntPtr pointer) => Pointer = pointer;
+
+		/// <summary>
+		/// Creates the component attached to an actor and optionally sets it as the root, first component will be set as the root automatically
+		/// </summary>
+		/// <param name="actor">The actor to attach the component to</param>
+		/// <param name="name">The name of the component</param>
+		/// <param name="setAsRoot">If <c>true</c>, sets the component as the root</param>
+		/// <param name="blueprint">The blueprint class to use as a base class, should be equal to the exact type of the component</param>
+		public SpringArmComponent(Actor actor, string name = null, bool setAsRoot = false, Blueprint blueprint = null) {
+			if (name?.Length == 0)
+				name = null;
+
+			if (actor == null)
+				throw new ArgumentNullException(nameof(actor));
+
+			if (blueprint != null && !blueprint.IsValidClass(Type))
+				throw new InvalidOperationException();
+
+			Pointer = create(actor.Pointer, Type, name, setAsRoot, blueprint != null ? blueprint.Pointer : IntPtr.Zero);
+		}
+
+		/// <summary>
+		/// Returns <c>true</c> if the collision test displacement being applied
+		/// </summary>
+		public bool IsCollisionFixApplied => isCollisionFixApplied(Pointer);
+
+		/// <summary>
+		/// Gets or sets whether draw markers at the camera target (in green) and the lagged position (in yellow) if the camera location lag is enabled
+		/// </summary>
+		public bool DrawDebugLagMarkers {
+			get => getDrawDebugLagMarkers(Pointer);
+			set => setDrawDebugLagMarkers(Pointer, value);
+		}
+
+		/// <summary>
+		/// Gets or sets whether the collision test is enabled using <see cref="ProbeChannel"/> and <see cref="ProbeSize"/> to prevent camera clipping into level
+		/// </summary>
+		public bool CollisionTest {
+			get => getCollisionTest(Pointer);
+			set => setCollisionTest(Pointer, value);
+		}
+
+		/// <summary>
+		/// Gets or sets whether the camera lags behind target position to smooth its movement
+		/// </summary>
+		public bool CameraPositionLag {
+			get => getCameraPositionLag(Pointer);
+			set => setCameraPositionLag(Pointer, value);
+		}
+
+		/// <summary>
+		/// Gets or sets whether the camera lags behind target rotation to smooth its movement
+		/// </summary>
+		public bool CameraRotationLag {
+			get => getCameraRotationLag(Pointer);
+			set => setCameraRotationLag(Pointer, value);
+		}
+
+		/// <summary>
+		/// Gets or sets whether the sub-step camera damping so that it handles fluctuating frame rates well
+		/// </summary>
+		public bool CameraLagSubstepping {
+			get => getCameraLagSubstepping(Pointer);
+			set => setCameraLagSubstepping(Pointer, value);
+		}
+
+		/// <summary>
+		/// Gets or sets whether the component should inherit yaw from the parent component, has no effect if using absolute rotation
+		/// </summary>
+		public bool InheritYaw {
+			get => getInheritYaw(Pointer);
+			set => setInheritYaw(Pointer, value);
+		}
+
+		/// <summary>
+		/// Gets or sets whether the component should inherit pitch from the parent component, has no effect if using absolute rotation
+		/// </summary>
+		public bool InheritPitch {
+			get => getInheritPitch(Pointer);
+			set => setInheritPitch(Pointer, value);
+		}
+
+		/// <summary>
+		/// Gets or sets whether the component should inherit roll from the parent component, has no effect if using absolute rotation
+		/// </summary>
+		public bool InheritRoll {
+			get => getInheritRoll(Pointer);
+			set => setInheritRoll(Pointer, value);
+		}
+
+		/// <summary>
+		/// Gets or sets a max distance the camera target may lag behind the current location
+		/// </summary>
+		public float CameraLagMaxDistance {
+			get => getCameraLagMaxDistance(Pointer);
+			set => setCameraLagMaxDistance(Pointer, value);
+		}
+
+		/// <summary>
+		/// Gets or sets a max time step used when sub-stepping camera lag
+		/// </summary>
+		public float CameraLagMaxTimeStep {
+			get => getCameraLagMaxTimeStep(Pointer);
+			set => setCameraLagMaxTimeStep(Pointer, value);
+		}
+
+		/// <summary>
+		/// Gets or sets how quickly the camera reaches a target position
+		/// </summary>
+		public float CameraPositionLagSpeed {
+			get => getCameraPositionLagSpeed(Pointer);
+			set => setCameraPositionLagSpeed(Pointer, value);
+		}
+
+		/// <summary>
+		/// Gets or sets how quickly еру camera reaches a target rotation
+		/// </summary>
+		public float CameraRotationLagSpeed {
+			get => getCameraRotationLagSpeed(Pointer);
+			set => setCameraRotationLagSpeed(Pointer, value);
+		}
+
+		/// <summary>
+		/// Gets or sets the collision channel of the query probe (<see cref="CollisionChannel.Camera"/> by default)
+		/// </summary>
+		public CollisionChannel ProbeChannel {
+			get => getProbeChannel(Pointer);
+			set => setProbeChannel(Pointer, value);
+		}
+
+		/// <summary>
+		/// Gets or sets how big should be the query probe sphere
+		/// </summary>
+		public float ProbeSize {
+			get => getProbeSize(Pointer);
+			set => setProbeSize(Pointer, value);
+		}
+
+		/// <summary>
+		/// Gets or sets the natural length of the spring arm when there are no collisions
+		/// </summary>
+		public float TargetArmLength {
+			get => getTargetArmLength(Pointer);
+			set => setTargetArmLength(Pointer, value);
+		}
+
+		/// <summary>
+		/// Gets or sets if the component should use the view/control rotation of the pawn
+		/// </summary>
+		public bool UsePawnControlRotation {
+			get => getUsePawnControlRotation(Pointer);
+			set => setUsePawnControlRotation(Pointer, value);
+		}
+
+		/// <summary>
+		/// Retrieves offset at the end of the spring arm, can be used instead of the relative offset of the attached component to ensure the line trace works as desired
+		/// </summary>
+		public void GetSocketOffset(ref Vector3 value) => getSocketOffset(Pointer, ref value);
+
+		/// <summary>
+		/// Returns offset at the end of the spring arm, can be used instead of the relative offset of the attached component to ensure the line trace works as desired
+		/// </summary>
+		public Vector3 GetSocketOffset() {
+			Vector3 value = default;
+
+			getSocketOffset(Pointer, ref value);
+
+			return value;
+		}
+
+		/// <summary>
+		/// Retrieves offset at the start of the spring arm in world space
+		/// </summary>
+		public void GetTargetOffset(ref Vector3 value) => getTargetOffset(Pointer, ref value);
+
+		/// <summary>
+		/// Returns offset at the start of the spring arm in world space
+		/// </summary>
+		public Vector3 GetTargetOffset() {
+			Vector3 value = default;
+
+			getTargetOffset(Pointer, ref value);
+
+			return value;
+		}
+
+		/// <summary>
+		/// Retrieves the unfixed camera position
+		/// </summary>
+		public void GetUnfixedCameraPosition(ref Vector3 value) => getUnfixedCameraPosition(Pointer, ref value);
+
+		/// <summary>
+		/// Returns the unfixed camera position
+		/// </summary>
+		public Vector3 GetUnfixedCameraPosition() {
+			Vector3 value = default;
+
+			getUnfixedCameraPosition(Pointer, ref value);
+
+			return value;
+		}
+
+		/// <summary>
+		/// Retrieves the desired rotation for the spring arm, before the rotation constraints such as <see cref="InheritYaw"/>, <see cref="InheritPitch"/>, or <see cref="InheritRoll"/> are enforced
+		/// </summary>
+		public void GetDesiredRotation(ref Quaternion value) => getDesiredRotation(Pointer, ref value);
+
+		/// <summary>
+		/// Returns the desired rotation for the spring arm, before the rotation constraints such as <see cref="InheritYaw"/>, <see cref="InheritPitch"/>, or <see cref="InheritRoll"/> are enforced
+		/// </summary>
+		public Quaternion GetDesiredRotation() {
+			Quaternion value = default;
+
+			getDesiredRotation(Pointer, ref value);
+
+			return value;
+		}
+
+		/// <summary>
+		/// Retrieves the target inherited rotation
+		/// </summary>
+		public void GetTargetRotation(ref Quaternion value) => getTargetRotation(Pointer, ref value);
+
+		/// <summary>
+		/// Returns the target inherited rotation
+		/// </summary>
+		public Quaternion GetTargetRotation() {
+			Quaternion value = default;
+
+			getTargetRotation(Pointer, ref value);
+
+			return value;
+		}
+
+		/// <summary>
+		/// Sets offset at the end of the spring arm, can be used instead of the relative offset of the attached component to ensure the line trace works as desired
+		/// </summary>
+		public void SetSocketOffset(in Vector3 value) => setSocketOffset(Pointer, value);
+
+		/// <summary>
+		/// Sets offset at the start of the spring arm in world space
+		/// </summary>
+		public void SetTargetOffset(in Vector3 value) => setTargetOffset(Pointer, value);
+	}
+
+	/// <summary>
+	/// A component that is used for post-processing manipulations
+	/// </summary>
+	public unsafe partial class PostProcessComponent : SceneComponent {
+		internal override ComponentType Type => ComponentType.PostProcess;
+
+		private protected PostProcessComponent() { }
+
+		internal PostProcessComponent(IntPtr pointer) => Pointer = pointer;
+
+		/// <summary>
+		/// Creates the component attached to an actor and optionally sets it as the root, first component will be set as the root automatically
+		/// </summary>
+		/// <param name="actor">The actor to attach the component to</param>
+		/// <param name="name">The name of the component</param>
+		/// <param name="setAsRoot">If <c>true</c>, sets the component as the root</param>
+		/// <param name="blueprint">The blueprint class to use as a base class, should be equal to the exact type of the component</param>
+		public PostProcessComponent(Actor actor, string name = null, bool setAsRoot = false, Blueprint blueprint = null) {
+			if (name?.Length == 0)
+				name = null;
+
+			if (actor == null)
+				throw new ArgumentNullException(nameof(actor));
+
+			if (blueprint != null && !blueprint.IsValidClass(Type))
+				throw new InvalidOperationException();
+
+			Pointer = create(actor.Pointer, Type, name, setAsRoot, blueprint != null ? blueprint.Pointer : IntPtr.Zero);
+		}
+
+		/// <summary>
+		/// Gets or sets whether the volume is enabled
+		/// </summary>
+		public bool Enabled {
+			get => getEnabled(Pointer);
+			set => setEnabled(Pointer, value);
+		}
+
+		/// <summary>
+		/// Gets or sets the world space radius around the volume that is used for blending if not unbound
+		/// </summary>
+		public float BlendRadius {
+			get => getBlendRadius(Pointer);
+			set => setBlendRadius(Pointer, value);
+		}
+
+		/// <summary>
+		/// Gets or sets the blend weight, 0.0f indicates no effect, 1.0f indicates full effect
+		/// </summary>
+		public float BlendWeight {
+			get => getBlendWeight(Pointer);
+			set => setBlendWeight(Pointer, value);
+		}
+
+		/// <summary>
+		/// Gets or sets whether the volume covers the whole world or only the area inside its bounds
+		/// </summary>
+		public bool Unbound {
+			get => getUnbound(Pointer);
+			set => setUnbound(Pointer, value);
+		}
+
+		/// <summary>
+		/// Gets or sets the priority of the volume
+		/// </summary>
+		public float Priority {
+			get => getPriority(Pointer);
+			set => setPriority(Pointer, value);
+		}
+	}
+
+	/// <summary>
 	/// An abstract component that contains or generates some sort of geometry, generally to be rendered or used as collision data
 	/// </summary>
-	public abstract partial class PrimitiveComponent : SceneComponent {
+	public abstract unsafe partial class PrimitiveComponent : SceneComponent {
 		private protected PrimitiveComponent() { }
 
 		/// <summary>
@@ -7129,6 +9109,26 @@ namespace UnrealEngine.Framework {
 				throw new ArgumentNullException(nameof(other));
 
 			return isOverlappingComponent(Pointer, other.Pointer);
+		}
+
+		/// <summary>
+		/// Performs the specified action on each overlapping component if any
+		/// </summary>
+		public unsafe void ForEachOverlappingComponent<T>(Action<T> action) where T : PrimitiveComponent {
+			if (action == null)
+				throw new ArgumentNullException(nameof(action));
+
+			ObjectReference* array = null;
+			int elements = 0;
+
+			forEachOverlappingComponent(Pointer, ref array, ref elements);
+
+			for (int i = 0; i < elements; i++) {
+				T component = array[i].ToComponent<T>();
+
+				if (component != null)
+					action(component);
+			}
 		}
 
 		/// <summary>
@@ -7158,6 +9158,22 @@ namespace UnrealEngine.Framework {
 		public bool OwnerNoSee {
 			get => getOwnerNoSee(Pointer);
 			set => setOwnerNoSee(Pointer, value);
+		}
+
+		/// <summary>
+		/// Gets or sets whether the component should ignore radial forces
+		/// </summary>
+		public bool IgnoreRadialForce {
+			get => getIgnoreRadialForce(Pointer);
+			set => setIgnoreRadialForce(Pointer, value);
+		}
+
+		/// <summary>
+		/// Gets or sets whether the component should ignore radial impulses
+		/// </summary>
+		public bool IgnoreRadialImpulse {
+			get => getIgnoreRadialImpulse(Pointer);
+			set => setIgnoreRadialImpulse(Pointer, value);
 		}
 
 		/// <summary>
@@ -7331,9 +9347,16 @@ namespace UnrealEngine.Framework {
 		}
 
 		/// <summary>
-		/// Returns the material at the specified element index
+		/// Returns the material at the specified element index or <c>null</c> on failure
 		/// </summary>
-		public MaterialInstanceDynamic GetMaterial(int elementIndex) => new MaterialInstanceDynamic(getMaterial(Pointer, elementIndex));
+		public MaterialInstanceDynamic GetMaterial(int elementIndex) {
+			IntPtr pointer = getMaterial(Pointer, elementIndex);
+
+			if (pointer != IntPtr.Zero)
+				return new(pointer);
+
+			return null;
+		}
 
 		/// <summary>
 		/// Retrieves distance to closest collision
@@ -7483,7 +9506,7 @@ namespace UnrealEngine.Framework {
 			IntPtr pointer = createAndSetMaterialInstanceDynamic(Pointer, elementIndex);
 
 			if (pointer != IntPtr.Zero)
-				return new MaterialInstanceDynamic(pointer);
+				return new(pointer);
 
 			return null;
 		}
@@ -7502,7 +9525,7 @@ namespace UnrealEngine.Framework {
 	/// <summary>
 	/// An abstract component that is represented by a simple geometrical shape
 	/// </summary>
-	public abstract partial class ShapeComponent : PrimitiveComponent {
+	public abstract unsafe partial class ShapeComponent : PrimitiveComponent {
 		private protected ShapeComponent() { }
 
 		/// <summary>
@@ -7525,7 +9548,7 @@ namespace UnrealEngine.Framework {
 	/// <summary>
 	/// A box generally used for simple collision
 	/// </summary>
-	public partial class BoxComponent : ShapeComponent {
+	public unsafe partial class BoxComponent : ShapeComponent {
 		internal override ComponentType Type => ComponentType.Box;
 
 		private protected BoxComponent() { }
@@ -7598,7 +9621,7 @@ namespace UnrealEngine.Framework {
 	/// <summary>
 	/// A sphere generally used for simple collision
 	/// </summary>
-	public partial class SphereComponent : ShapeComponent {
+	public unsafe partial class SphereComponent : ShapeComponent {
 		internal override ComponentType Type => ComponentType.Sphere;
 
 		private protected SphereComponent() { }
@@ -7654,7 +9677,7 @@ namespace UnrealEngine.Framework {
 	/// <summary>
 	/// A capsule generally used for simple collision
 	/// </summary>
-	public partial class CapsuleComponent : ShapeComponent {
+	public unsafe partial class CapsuleComponent : ShapeComponent {
 		internal override ComponentType Type => ComponentType.Capsule;
 
 		private protected CapsuleComponent() { }
@@ -7725,7 +9748,7 @@ namespace UnrealEngine.Framework {
 	/// <summary>
 	/// An abstract component that is an instance of a renderable collection of triangles
 	/// </summary>
-	public abstract partial class MeshComponent : PrimitiveComponent {
+	public abstract unsafe partial class MeshComponent : PrimitiveComponent {
 		private protected MeshComponent() { }
 
 		/// <summary>
@@ -7750,9 +9773,100 @@ namespace UnrealEngine.Framework {
 	}
 
 	/// <summary>
+	/// Renders text in the world
+	/// </summary>
+	public unsafe partial class TextRenderComponent : PrimitiveComponent {
+		internal override ComponentType Type => ComponentType.TextRender;
+
+		private protected TextRenderComponent() { }
+
+		internal TextRenderComponent(IntPtr pointer) => Pointer = pointer;
+
+		/// <summary>
+		/// Creates the component attached to an actor and optionally sets it as the root, first component will be set as the root automatically
+		/// </summary>
+		/// <param name="actor">The actor to attach the component to</param>
+		/// <param name="name">The name of the component</param>
+		/// <param name="setAsRoot">If <c>true</c>, sets the component as the root</param>
+		/// <param name="blueprint">The blueprint class to use as a base class, should be equal to the exact type of the component</param>
+		public TextRenderComponent(Actor actor, string name = null, bool setAsRoot = false, Blueprint blueprint = null) {
+			if (name?.Length == 0)
+				name = null;
+
+			if (actor == null)
+				throw new ArgumentNullException(nameof(actor));
+
+			if (blueprint != null && !blueprint.IsValidClass(Type))
+				throw new InvalidOperationException();
+
+			Pointer = create(actor.Pointer, Type, name, setAsRoot, blueprint != null ? blueprint.Pointer : IntPtr.Zero);
+		}
+
+		/// <summary>
+		/// Sets the font of the component
+		/// </summary>
+		public void SetFont(Font value) {
+			if (value == null)
+				throw new ArgumentNullException(nameof(value));
+
+			setFont(Pointer, value.Pointer);
+		}
+
+		/// <summary>
+		/// Sets the text of the component
+		/// </summary>
+		public void SetText(string value) => setText(Pointer, value);
+
+		/// <summary>
+		/// Sets the text material of the component
+		/// </summary>
+		public void SetTextMaterial(MaterialInterface material) {
+			if (material == null)
+				throw new ArgumentNullException(nameof(material));
+
+			setTextMaterial(Pointer, material.Pointer);
+		}
+
+		/// <summary>
+		/// Sets the text render color of the component
+		/// </summary>
+		public void SetTextRenderColor(Color value) => setTextRenderColor(Pointer, value.ToArgb());
+
+		/// <summary>
+		/// Sets the herizontal alignment
+		/// </summary>
+		public void SetHorizontalAlignment(HorizontalTextAligment value) => setHorizontalAlignment(Pointer, value);
+
+		/// <summary>
+		/// Sets the horizontal spacing adjustment
+		/// </summary>
+		public void SetHorizontalSpacingAdjustment(float value) => setHorizontalSpacingAdjustment(Pointer, value);
+
+		/// <summary>
+		/// Sets the vertical alignment
+		/// </summary>
+		public void SetVerticalAlignment(VerticalTextAligment value) => setVerticalAlignment(Pointer, value);
+
+		/// <summary>
+		/// Sets the vertical spacing adjustment
+		/// </summary>
+		public void SetVerticalSpacingAdjustment(float value) => setVerticalSpacingAdjustment(Pointer, value);
+
+		/// <summary>
+		/// Sets the text scale
+		/// </summary>
+		public void SetScale(in Vector2 value) => setScale(Pointer, value);
+
+		/// <summary>
+		/// Sets the world size of the text
+		/// </summary>
+		public void SetWorldSize(float value) => setWorldSize(Pointer, value);
+	}
+
+	/// <summary>
 	/// The base class of light components
 	/// </summary>
-	public abstract partial class LightComponentBase : SceneComponent {
+	public abstract unsafe partial class LightComponentBase : SceneComponent {
 		private protected LightComponentBase() { }
 
 		/// <summary>
@@ -7772,12 +9886,32 @@ namespace UnrealEngine.Framework {
 	/// <summary>
 	/// A component that represents light
 	/// </summary>
-	public partial class LightComponent : LightComponentBase {
+	public unsafe partial class LightComponent : LightComponentBase {
 		internal override ComponentType Type => ComponentType.Light;
 
 		private protected LightComponent() { }
 
 		internal LightComponent(IntPtr pointer) => Pointer = pointer;
+
+		/// <summary>
+		/// Creates the component attached to an actor and optionally sets it as the root, first component will be set as the root automatically
+		/// </summary>
+		/// <param name="actor">The actor to attach the component to</param>
+		/// <param name="name">The name of the component</param>
+		/// <param name="setAsRoot">If <c>true</c>, sets the component as the root</param>
+		/// <param name="blueprint">The blueprint class to use as a base class, should be equal to the exact type of the component</param>
+		public LightComponent(Actor actor, string name = null, bool setAsRoot = false, Blueprint blueprint = null) {
+			if (name?.Length == 0)
+				name = null;
+
+			if (actor == null)
+				throw new ArgumentNullException(nameof(actor));
+
+			if (blueprint != null && !blueprint.IsValidClass(Type))
+				throw new InvalidOperationException();
+
+			Pointer = create(actor.Pointer, Type, name, setAsRoot, blueprint != null ? blueprint.Pointer : IntPtr.Zero);
+		}
 
 		/// <summary>
 		/// Sets the intensity of the light
@@ -7793,18 +9927,38 @@ namespace UnrealEngine.Framework {
 	/// <summary>
 	/// A component that represents directional light
 	/// </summary>
-	public partial class DirectionalLightComponent : LightComponent {
+	public unsafe partial class DirectionalLightComponent : LightComponent {
 		internal override ComponentType Type => ComponentType.DirectionalLight;
 
 		private protected DirectionalLightComponent() { }
 
 		internal DirectionalLightComponent(IntPtr pointer) => Pointer = pointer;
+
+		/// <summary>
+		/// Creates the component attached to an actor and optionally sets it as the root, first component will be set as the root automatically
+		/// </summary>
+		/// <param name="actor">The actor to attach the component to</param>
+		/// <param name="name">The name of the component</param>
+		/// <param name="setAsRoot">If <c>true</c>, sets the component as the root</param>
+		/// <param name="blueprint">The blueprint class to use as a base class, should be equal to the exact type of the component</param>
+		public DirectionalLightComponent(Actor actor, string name = null, bool setAsRoot = false, Blueprint blueprint = null) {
+			if (name?.Length == 0)
+				name = null;
+
+			if (actor == null)
+				throw new ArgumentNullException(nameof(actor));
+
+			if (blueprint != null && !blueprint.IsValidClass(Type))
+				throw new InvalidOperationException();
+
+			Pointer = create(actor.Pointer, Type, name, setAsRoot, blueprint != null ? blueprint.Pointer : IntPtr.Zero);
+		}
 	}
 
 	/// <summary>
 	/// A component that represents a physical motion controller in 3D space
 	/// </summary>
-	public partial class MotionControllerComponent : PrimitiveComponent {
+	public unsafe partial class MotionControllerComponent : PrimitiveComponent {
 		internal override ComponentType Type => ComponentType.MotionController;
 
 		private protected MotionControllerComponent() { }
@@ -7837,6 +9991,14 @@ namespace UnrealEngine.Framework {
 		public bool IsTracked => isTracked(Pointer);
 
 		/// <summary>
+		/// Gets or sets whether to render a model associated with the set hand
+		/// </summary>
+		public bool DisplayDeviceModel {
+			get => getDisplayDeviceModel(Pointer);
+			set => setDisplayDeviceModel(Pointer, value);
+		}
+
+		/// <summary>
 		/// Gets or sets whether render transforms within the motion controller hierarchy will be updated a second time immediately before rendering
 		/// </summary>
 		public bool DisableLowLatencyUpdate {
@@ -7856,12 +10018,32 @@ namespace UnrealEngine.Framework {
 		/// Sets the tracking motion source
 		/// </summary>
 		public void SetTrackingMotionSource(string source) => setTrackingMotionSource(Pointer, source);
+
+		/// <summary>
+		/// Sets the player index which the motion controller should automatically follow
+		/// </summary>
+		public void SetAssociatedPlayerIndex(int playerIndex) => setAssociatedPlayerIndex(Pointer, playerIndex);
+
+		/// <summary>
+		/// Sets the custom display mesh that attached to the motion controller
+		/// </summary>
+		public void SetCustomDisplayMesh(StaticMesh staticMesh) {
+			if (staticMesh == null)
+				throw new ArgumentNullException(nameof(staticMesh));
+
+			setCustomDisplayMesh(Pointer, staticMesh.Pointer);
+		}
+
+		/// <summary>
+		/// Sets the display model source
+		/// </summary>
+		public void SetDisplayModelSource(string source) => setDisplayModelSource(Pointer, source);
 	}
 
 	/// <summary>
 	/// A component that is used to create an instance of a static mesh, a piece of geometry that consists of a static set of polygons
 	/// </summary>
-	public partial class StaticMeshComponent : MeshComponent {
+	public unsafe partial class StaticMeshComponent : MeshComponent {
 		internal override ComponentType Type => ComponentType.StaticMesh;
 
 		private protected StaticMeshComponent() { }
@@ -7900,7 +10082,7 @@ namespace UnrealEngine.Framework {
 			IntPtr pointer = getStaticMesh(Pointer);
 
 			if (pointer != IntPtr.Zero)
-				return new StaticMesh(pointer);
+				return new(pointer);
 
 			return null;
 		}
@@ -7919,7 +10101,7 @@ namespace UnrealEngine.Framework {
 	/// <summary>
 	/// A component that efficiently renders multiple instances of the same <see cref="StaticMeshComponent"/>
 	/// </summary>
-	public partial class InstancedStaticMeshComponent : StaticMeshComponent {
+	public unsafe partial class InstancedStaticMeshComponent : StaticMeshComponent {
 		internal override ComponentType Type => ComponentType.InstancedStaticMesh;
 
 		private protected InstancedStaticMeshComponent() { }
@@ -7959,7 +10141,17 @@ namespace UnrealEngine.Framework {
 		/// <summary>
 		/// Adds an instance to the component using the transform that will be applied at instantiation
 		/// </summary>
-		public int AddInstance(in Transform instanceTransform) => addInstance(Pointer, instanceTransform);
+		public void AddInstance(in Transform instanceTransform) => addInstance(Pointer, instanceTransform);
+
+		/// <summary>
+		/// Adds multiple instances to the component using the transforms that will be applied at instantiation
+		/// </summary>
+		public void AddInstances(Transform[] instanceTransforms) {
+			if (instanceTransforms == null)
+				throw new ArgumentNullException(nameof(instanceTransforms));
+
+			addInstances(Pointer, instanceTransforms.Length, instanceTransforms);
+		}
 
 		/// <summary>
 		/// Updates the transform for the specified instance
@@ -7973,6 +10165,22 @@ namespace UnrealEngine.Framework {
 		public bool UpdateInstanceTransform(int instanceIndex, in Transform instanceTransform, bool worldSpace = false, bool markRenderStateDirty = false, bool teleport = false) => updateInstanceTransform(Pointer, instanceIndex, instanceTransform, worldSpace, markRenderStateDirty, teleport);
 
 		/// <summary>
+		/// Updates the transform for an array of instances
+		/// </summary>
+		/// <param name="startInstanceIndex">The starting index of the instances to update</param>
+		/// <param name="instanceTransforms">The new transforms to apply</param>
+		/// <param name="worldSpace">If <c>true</c>, the new transforms are interpreted as a world space transforms, otherwise it is interpreted as local space</param>
+		/// <param name="markRenderStateDirty">If the render state is marked as dirty the change should be visible immediately</param>
+		/// <param name="teleport">Whether the instances physics should be moved normally, or teleported (moved instantly, ignoring velocity)</param>
+		/// <returns><c>true</c> if successful</returns>
+		public bool BatchUpdateInstanceTransforms(int startInstanceIndex, Transform[] instanceTransforms, bool worldSpace = false, bool markRenderStateDirty = false, bool teleport = false) {
+			if (instanceTransforms == null)
+				throw new ArgumentNullException(nameof(instanceTransforms));
+
+			return batchUpdateInstanceTransforms(Pointer, startInstanceIndex, instanceTransforms.Length, instanceTransforms, worldSpace, markRenderStateDirty, teleport);
+		}
+
+		/// <summary>
 		/// Removes the specified instance
 		/// </summary>
 		public bool RemoveInstance(int instanceIndex) => removeInstance(Pointer, instanceIndex);
@@ -7984,9 +10192,48 @@ namespace UnrealEngine.Framework {
 	}
 
 	/// <summary>
+	/// A component that efficiently renders multiple instances of the same <see cref="StaticMeshComponent"/> with different level of detail
+	/// </summary>
+	public unsafe partial class HierarchicalInstancedStaticMeshComponent : InstancedStaticMeshComponent {
+		internal override ComponentType Type => ComponentType.HierarchicalInstancedStaticMesh;
+
+		private protected HierarchicalInstancedStaticMeshComponent() { }
+
+		internal HierarchicalInstancedStaticMeshComponent(IntPtr pointer) => Pointer = pointer;
+
+		/// <summary>
+		/// Creates the component attached to an actor and optionally sets it as the root, first component will be set as the root automatically
+		/// </summary>
+		/// <param name="actor">The actor to attach the component to</param>
+		/// <param name="name">The name of the component</param>
+		/// <param name="setAsRoot">If <c>true</c>, sets the component as the root</param>
+		/// <param name="blueprint">The blueprint class to use as a base class, should be equal to the exact type of the component</param>
+		public HierarchicalInstancedStaticMeshComponent(Actor actor, string name = null, bool setAsRoot = false, Blueprint blueprint = null) {
+			if (name?.Length == 0)
+				name = null;
+
+			if (actor == null)
+				throw new ArgumentNullException(nameof(actor));
+
+			if (blueprint != null && !blueprint.IsValidClass(Type))
+				throw new InvalidOperationException();
+
+			Pointer = create(actor.Pointer, Type, name, setAsRoot, blueprint != null ? blueprint.Pointer : IntPtr.Zero);
+		}
+
+		/// <summary>
+		/// Gets or sets whether the collision should be disabled
+		/// </summary>
+		public bool DisableCollision {
+			get => getDisableCollision(Pointer);
+			set => setDisableCollision(Pointer, value);
+		}
+	}
+
+	/// <summary>
 	/// A component that supports bone skinned mesh rendering
 	/// </summary>
-	public abstract partial class SkinnedMeshComponent : MeshComponent {
+	public abstract unsafe partial class SkinnedMeshComponent : MeshComponent {
 		private protected SkinnedMeshComponent() { }
 
 		/// <summary>
@@ -8007,7 +10254,7 @@ namespace UnrealEngine.Framework {
 
 			getBoneName(Pointer, boneIndex, stringBuffer);
 
-			return Encoding.UTF8.GetString(stringBuffer).TrimFromZero();
+			return stringBuffer.BytesToString();
 		}
 
 		/// <summary>
@@ -8027,7 +10274,7 @@ namespace UnrealEngine.Framework {
 		}
 
 		/// <summary>
-		/// Changes the skeletal mesh
+		/// Sets the skeletal mesh
 		/// </summary>
 		public void SetSkeletalMesh(SkeletalMesh skeletalMesh, bool reinitializePose = true) {
 			if (skeletalMesh == null)
@@ -8040,7 +10287,7 @@ namespace UnrealEngine.Framework {
 	/// <summary>
 	/// A component that is used to create an instance of an animated <see cref="SkeletalMesh"/> asset
 	/// </summary>
-	public partial class SkeletalMeshComponent : SkinnedMeshComponent {
+	public unsafe partial class SkeletalMeshComponent : SkinnedMeshComponent {
 		internal override ComponentType Type => ComponentType.SkeletalMesh;
 
 		private protected SkeletalMeshComponent() { }
@@ -8079,7 +10326,7 @@ namespace UnrealEngine.Framework {
 			IntPtr pointer = getAnimationInstance(Pointer);
 
 			if (pointer != IntPtr.Zero)
-				return new AnimationInstance(pointer);
+				return new(pointer);
 
 			return null;
 		}
@@ -8131,9 +10378,672 @@ namespace UnrealEngine.Framework {
 	}
 
 	/// <summary>
+	/// Represents a spline shape
+	/// </summary>
+	public unsafe partial class SplineComponent : PrimitiveComponent {
+		internal override ComponentType Type => ComponentType.Spline;
+
+		private protected SplineComponent() { }
+
+		internal SplineComponent(IntPtr pointer) => Pointer = pointer;
+
+		/// <summary>
+		/// Creates the component attached to an actor and optionally sets it as the root, first component will be set as the root automatically
+		/// </summary>
+		/// <param name="actor">The actor to attach the component to</param>
+		/// <param name="name">The name of the component</param>
+		/// <param name="setAsRoot">If <c>true</c>, sets the component as the root</param>
+		/// <param name="blueprint">The blueprint class to use as a base class, should be equal to the exact type of the component</param>
+		public SplineComponent(Actor actor, string name = null, bool setAsRoot = false, Blueprint blueprint = null) {
+			if (name?.Length == 0)
+				name = null;
+
+			if (actor == null)
+				throw new ArgumentNullException(nameof(actor));
+
+			if (blueprint != null && !blueprint.IsValidClass(Type))
+				throw new InvalidOperationException();
+
+			Pointer = create(actor.Pointer, Type, name, setAsRoot, blueprint != null ? blueprint.Pointer : IntPtr.Zero);
+		}
+
+		/// <summary>
+		/// Returns <c>true</c> if the spline is a closed loop
+		/// </summary>
+		public bool IsClosedLoop => isClosedLoop(Pointer);
+
+		/// <summary>
+		/// Gets or sets the duration of the spline in seconds
+		/// </summary>
+		public float Duration {
+			get => getDuration(Pointer);
+			set => setDuration(Pointer, value);
+		}
+
+		/// <summary>
+		/// Returns the number of spline points
+		/// </summary>
+		public int SplinePointsNumber => getSplinePointsNumber(Pointer);
+
+		/// <summary>
+		/// Returns the number of spline segments
+		/// </summary>
+		public int SplineSegmentsNumber => getSplineSegmentsNumber(Pointer);
+
+		/// <summary>
+		/// Returns the type of a spline point
+		/// </summary>
+		public SplinePointType GetSplinePointType(int pointIndex) => getSplinePointType(Pointer, pointIndex);
+
+		/// <summary>
+		/// Retrieves the tangent at the given distance along the length of the spline
+		/// </summary>
+		public void GetTangentAtDistanceAlongSpline(float distance, SplineCoordinateSpace coordinateSpace, ref Vector3 value) => getTangentAtDistanceAlongSpline(Pointer, distance, coordinateSpace, ref value);
+
+		/// <summary>
+		/// Returns the tangent at the given distance along the length of the spline
+		/// </summary>
+		public Vector3 GetTangentAtDistanceAlongSpline(float distance, SplineCoordinateSpace coordinateSpace) {
+			Vector3 value = default;
+
+			getTangentAtDistanceAlongSpline(Pointer, distance, coordinateSpace, ref value);
+
+			return value;
+		}
+
+		/// <summary>
+		/// Retrieves the tangent at the spline point
+		/// </summary>
+		public void GetTangentAtSplinePoint(int pointIndex, SplineCoordinateSpace coordinateSpace, ref Vector3 value) => getTangentAtSplinePoint(Pointer, pointIndex, coordinateSpace, ref value);
+
+		/// <summary>
+		/// Returns the tangent at the spline point
+		/// </summary>
+		public Vector3 GetTangentAtSplinePoint(int pointIndex, SplineCoordinateSpace coordinateSpace) {
+			Vector3 value = default;
+
+			getTangentAtSplinePoint(Pointer, pointIndex, coordinateSpace, ref value);
+
+			return value;
+		}
+
+		/// <summary>
+		/// Retrieves the tangent at the given time from 0.0f to the spline duration
+		/// </summary>
+		public void GetTangentAtTime(float time, SplineCoordinateSpace coordinateSpace, bool useConstantVelocity, ref Vector3 value) => getTangentAtTime(Pointer, time, coordinateSpace, useConstantVelocity, ref value);
+
+		/// <summary>
+		/// Returns the tangent at the given time from 0.0f to the spline duration
+		/// </summary>
+		public Vector3 GetTangentAtTime(float time, SplineCoordinateSpace coordinateSpace, bool useConstantVelocity = false) {
+			Vector3 value = default;
+
+			getTangentAtTime(Pointer, time, coordinateSpace, useConstantVelocity, ref value);
+
+			return value;
+		}
+
+		/// <summary>
+		/// Retrieves the transform at the given distance along the length of the spline
+		/// </summary>
+		public void GetTransformAtDistanceAlongSpline(float distance, SplineCoordinateSpace coordinateSpace, ref Transform value) => getTransformAtDistanceAlongSpline(Pointer, distance, coordinateSpace, ref value);
+
+		/// <summary>
+		/// Returns the transform at the given distance along the length of the spline
+		/// </summary>
+		public Transform GetTransformAtDistanceAlongSpline(float distance, SplineCoordinateSpace coordinateSpace) {
+			Transform value = default;
+
+			getTransformAtDistanceAlongSpline(Pointer, distance, coordinateSpace, ref value);
+
+			return value;
+		}
+
+		/// <summary>
+		/// Retrieves the transform at the spline point
+		/// </summary>
+		public void GetTransformAtSplinePoint(int pointIndex, SplineCoordinateSpace coordinateSpace, bool useScale, ref Transform value) => getTransformAtSplinePoint(Pointer, pointIndex, coordinateSpace, useScale, ref value);
+
+		/// <summary>
+		/// Returns the transform at the spline point
+		/// </summary>
+		public Transform GetTransformAtSplinePoint(int pointIndex, SplineCoordinateSpace coordinateSpace, bool useScale = false) {
+			Transform value = default;
+
+			getTransformAtSplinePoint(Pointer, pointIndex, coordinateSpace, useScale, ref value);
+
+			return value;
+		}
+
+		/// <summary>
+		/// Retrieves the arrive tangent at the spline point
+		/// </summary>
+		public void GetArriveTangentAtSplinePoint(int pointIndex, SplineCoordinateSpace coordinateSpace, ref Vector3 value) => getArriveTangentAtSplinePoint(Pointer, pointIndex, coordinateSpace, ref value);
+
+		/// <summary>
+		/// Returns the arrive tangent at the spline point
+		/// </summary>
+		public Vector3 GetArriveTangentAtSplinePoint(int pointIndex, SplineCoordinateSpace coordinateSpace) {
+			Vector3 value = default;
+
+			getArriveTangentAtSplinePoint(Pointer, pointIndex, coordinateSpace, ref value);
+
+			return value;
+		}
+
+		/// <summary>
+		/// Retrieves the default up vector of the spline
+		/// </summary>
+		public void GetDefaultUpVector(SplineCoordinateSpace coordinateSpace, ref Vector3 value) => getDefaultUpVector(Pointer, coordinateSpace, ref value);
+
+		/// <summary>
+		/// Returns the default up vector of the spline
+		/// </summary>
+		public Vector3 GetDefaultUpVector(SplineCoordinateSpace coordinateSpace) {
+			Vector3 value = default;
+
+			getDefaultUpVector(Pointer, coordinateSpace, ref value);
+
+			return value;
+		}
+
+		/// <summary>
+		/// Retrieves a unit direction vector of the spline tangent at the given distance along the length of the spline
+		/// </summary>
+		public void GetDirectionAtDistanceAlongSpline(float distance, SplineCoordinateSpace coordinateSpace, ref Vector3 value) => getDirectionAtDistanceAlongSpline(Pointer, distance, coordinateSpace, ref value);
+
+		/// <summary>
+		/// Returns a unit direction vector of the spline tangent at the given distance along the length of the spline
+		/// </summary>
+		public Vector3 GetDirectionAtDistanceAlongSpline(float distance, SplineCoordinateSpace coordinateSpace) {
+			Vector3 value = default;
+
+			getDirectionAtDistanceAlongSpline(Pointer, distance, coordinateSpace, ref value);
+
+			return value;
+		}
+
+		/// <summary>
+		/// Retrieves a unit direction vector at the spline point
+		/// </summary>
+		public void GetDirectionAtSplinePoint(int pointIndex, SplineCoordinateSpace coordinateSpace, ref Vector3 value) => getDirectionAtSplinePoint(Pointer, pointIndex, coordinateSpace, ref value);
+
+		/// <summary>
+		/// Returns a unit direction vector at the spline point
+		/// </summary>
+		public Vector3 GetDirectionAtSplinePoint(int pointIndex, SplineCoordinateSpace coordinateSpace) {
+			Vector3 value = default;
+
+			getDirectionAtSplinePoint(Pointer, pointIndex, coordinateSpace, ref value);
+
+			return value;
+		}
+
+		/// <summary>
+		/// Retrieves a unit direction vector of the spline tangent at the given time from 0.0f to the spline duration
+		/// </summary>
+		public void GetDirectionAtTime(float time, SplineCoordinateSpace coordinateSpace, bool useConstantVelocity, ref Vector3 value) => getDirectionAtTime(Pointer, time, coordinateSpace, useConstantVelocity, ref value);
+
+		/// <summary>
+		/// Returns a unit direction vector of the spline tangent at the given time from 0.0f to the spline duration
+		/// </summary>
+		public Vector3 GetDirectionAtTime(float time, SplineCoordinateSpace coordinateSpace, bool useConstantVelocity = false) {
+			Vector3 value = default;
+
+			getDirectionAtTime(Pointer, time, coordinateSpace, useConstantVelocity, ref value);
+
+			return value;
+		}
+
+		/// <summary>
+		/// Returns the distance along the spline at the spline point
+		/// </summary>
+		public float GetDistanceAlongSplineAtSplinePoint(int pointIndex) => getDistanceAlongSplineAtSplinePoint(Pointer, pointIndex);
+
+		/// <summary>
+		/// Retrieves the leave tangent at the spline point
+		/// </summary>
+		public void GetLeaveTangentAtSplinePoint(int pointIndex, SplineCoordinateSpace coordinateSpace, ref Vector3 value) => getLeaveTangentAtSplinePoint(Pointer, pointIndex, coordinateSpace, ref value);
+
+		/// <summary>
+		/// Returns the leave tangent at the spline point
+		/// </summary>
+		public Vector3 GetLeaveTangentAtSplinePoint(int pointIndex, SplineCoordinateSpace coordinateSpace) {
+			Vector3 value = default;
+
+			getLeaveTangentAtSplinePoint(Pointer, pointIndex, coordinateSpace, ref value);
+
+			return value;
+		}
+
+		/// <summary>
+		/// Retrieves the location and tangent at the spline point
+		/// </summary>
+		public void GetLocationAndTangentAtSplinePoint(int pointIndex, SplineCoordinateSpace coordinateSpace, ref Vector3 location, ref Vector3 tangent) => getLocationAndTangentAtSplinePoint(Pointer, pointIndex, coordinateSpace, ref location, ref tangent);
+
+		/// <summary>
+		/// Retrieves the location at the given distance along the length of the spline
+		/// </summary>
+		public void GetLocationAtDistanceAlongSpline(float distance, SplineCoordinateSpace coordinateSpace, ref Vector3 value) => getLocationAtDistanceAlongSpline(Pointer, distance, coordinateSpace, ref value);
+
+		/// <summary>
+		/// Returns the location at the given distance along the length of the spline
+		/// </summary>
+		public Vector3 GetLocationAtDistanceAlongSpline(float distance, SplineCoordinateSpace coordinateSpace) {
+			Vector3 value = default;
+
+			getLocationAtDistanceAlongSpline(Pointer, distance, coordinateSpace, ref value);
+
+			return value;
+		}
+
+		/// <summary>
+		/// Retrieves the location at the spline point
+		/// </summary>
+		public void GetLocationAtSplinePoint(int pointIndex, SplineCoordinateSpace coordinateSpace, ref Vector3 value) => getLocationAtSplinePoint(Pointer, pointIndex, coordinateSpace, ref value);
+
+		/// <summary>
+		/// Returns the location at the spline point
+		/// </summary>
+		public Vector3 GetLocationAtSplinePoint(int pointIndex, SplineCoordinateSpace coordinateSpace) {
+			Vector3 value = default;
+
+			getLocationAtSplinePoint(Pointer, pointIndex, coordinateSpace, ref value);
+
+			return value;
+		}
+
+		/// <summary>
+		/// Retrieves the location at the given time from 0.0f to the spline duration
+		/// </summary>
+		public void GetLocationAtTime(float time, SplineCoordinateSpace coordinateSpace, ref Vector3 value) => getLocationAtTime(Pointer, time, coordinateSpace, ref value);
+
+		/// <summary>
+		/// Returns the location at the given time from 0.0f to the spline duration
+		/// </summary>
+		public Vector3 GetLocationAtTime(float time, SplineCoordinateSpace coordinateSpace) {
+			Vector3 value = default;
+
+			getLocationAtTime(Pointer, time, coordinateSpace, ref value);
+
+			return value;
+		}
+
+		/// <summary>
+		/// Retrieves a unit direction vector corresponding to the spline's right vector at the given distance along the length of the spline
+		/// </summary>
+		public void GetRightVectorAtDistanceAlongSpline(float distance, SplineCoordinateSpace coordinateSpace, ref Vector3 value) => getRightVectorAtDistanceAlongSpline(Pointer, distance, coordinateSpace, ref value);
+
+		/// <summary>
+		/// Retrieves a unit direction vector corresponding to the spline's right vector at the given distance along the length of the spline
+		/// </summary>
+		public Vector3 GetRightVectorAtDistanceAlongSpline(float distance, SplineCoordinateSpace coordinateSpace) {
+			Vector3 value = default;
+
+			getRightVectorAtDistanceAlongSpline(Pointer, distance, coordinateSpace, ref value);
+
+			return value;
+		}
+
+		/// <summary>
+		/// Retrieves the spline's right vector at the spline point
+		/// </summary>
+		public void GetRightVectorAtSplinePoint(int pointIndex, SplineCoordinateSpace coordinateSpace, ref Vector3 value) => getRightVectorAtSplinePoint(Pointer, pointIndex, coordinateSpace, ref value);
+
+		/// <summary>
+		/// Returns the spline's right vector at the spline point
+		/// </summary>
+		public Vector3 GetRightVectorAtSplinePoint(int pointIndex, SplineCoordinateSpace coordinateSpace) {
+			Vector3 value = default;
+
+			getRightVectorAtSplinePoint(Pointer, pointIndex, coordinateSpace, ref value);
+
+			return value;
+		}
+
+		/// <summary>
+		/// Retrieves the spline's right vector at the given time from 0.0f to the spline duration
+		/// </summary>
+		public void GetRightVectorAtTime(float time, SplineCoordinateSpace coordinateSpace, bool useConstantVelocity, ref Vector3 value) => getRightVectorAtTime(Pointer, time, coordinateSpace, useConstantVelocity, ref value);
+
+		/// <summary>
+		/// Returns the spline's right vector at the given time from 0.0f to the spline duration
+		/// </summary>
+		public Vector3 GetRightVectorAtTime(float time, SplineCoordinateSpace coordinateSpace, bool useConstantVelocity = false) {
+			Vector3 value = default;
+
+			getRightVectorAtTime(Pointer, time, coordinateSpace, useConstantVelocity, ref value);
+
+			return value;
+		}
+
+		/// <summary>
+		/// Returns the spline's roll in degrees at the given distance along the length of the spline
+		/// </summary>
+		public float GetRollAtDistanceAlongSpline(float distance, SplineCoordinateSpace coordinateSpace) => getRollAtDistanceAlongSpline(Pointer, distance, coordinateSpace);
+
+		/// <summary>
+		/// Returns the spline's roll in degrees at the spline point
+		/// </summary>
+		public float GetRollAtSplinePoint(int pointIndex, SplineCoordinateSpace coordinateSpace) => getRollAtSplinePoint(Pointer, pointIndex, coordinateSpace);
+
+		/// <summary>
+		/// Returns the spline's roll in degrees at the given time from 0.0f to the spline duration
+		/// </summary>
+		public float GetRollAtTime(float time, SplineCoordinateSpace coordinateSpace, bool useConstantVelocity = false) => getRollAtTime(Pointer, time, coordinateSpace, useConstantVelocity);
+
+		/// <summary>
+		/// Retrieves a rotation corresponding to the spline's rotation at the given distance along the length of the spline
+		/// </summary>
+		public void GetRotationAtDistanceAlongSpline(float distance, SplineCoordinateSpace coordinateSpace, ref Quaternion value) => getRotationAtDistanceAlongSpline(Pointer, distance, coordinateSpace, ref value);
+
+		/// <summary>
+		/// Returns a rotation corresponding to the spline's rotation at the given distance along the length of the spline
+		/// </summary>
+		public Quaternion GetRotationAtDistanceAlongSpline(float distance, SplineCoordinateSpace coordinateSpace) {
+			Quaternion value = default;
+
+			getRotationAtDistanceAlongSpline(Pointer, distance, coordinateSpace, ref value);
+
+			return value;
+		}
+
+		/// <summary>
+		/// Retrieves a spline's rotation at the spline point
+		/// </summary>
+		public void GetRotationAtSplinePoint(int pointIndex, SplineCoordinateSpace coordinateSpace, ref Quaternion value) => getRotationAtSplinePoint(Pointer, pointIndex, coordinateSpace, ref value);
+
+		/// <summary>
+		/// Returns a spline's rotation at the spline point
+		/// </summary>
+		public Quaternion GetRotationAtSplinePoint(int pointIndex, SplineCoordinateSpace coordinateSpace) {
+			Quaternion value = default;
+
+			getRotationAtSplinePoint(Pointer, pointIndex, coordinateSpace, ref value);
+
+			return value;
+		}
+
+		/// <summary>
+		/// Retrieves a rotation corresponding to the spline's position and direction at the given time from 0.0f to the spline duration
+		/// </summary>
+		public void GetRotationAtTime(float time, SplineCoordinateSpace coordinateSpace, bool useConstantVelocity, ref Quaternion value) => getRotationAtTime(Pointer, time, coordinateSpace, useConstantVelocity, ref value);
+
+		/// <summary>
+		/// Returns a rotation corresponding to the spline's position and direction at the given time from 0.0f to the spline duration
+		/// </summary>
+		public Quaternion GetRotationAtTime(float time, SplineCoordinateSpace coordinateSpace, bool useConstantVelocity = false) {
+			Quaternion value = default;
+
+			getRotationAtTime(Pointer, time, coordinateSpace, useConstantVelocity, ref value);
+
+			return value;
+		}
+
+		/// <summary>
+		/// Retrieves the spline's scale at the given distance along the length of the spline
+		/// </summary>
+		public void GetScaleAtDistanceAlongSpline(float distance, ref Vector3 value) => getScaleAtDistanceAlongSpline(Pointer, distance, ref value);
+
+		/// <summary>
+		/// Returns the spline's scale at the given distance along the length of the spline
+		/// </summary>
+		public Vector3 GetScaleAtDistanceAlongSpline(float distance) {
+			Vector3 value = default;
+
+			getScaleAtDistanceAlongSpline(Pointer, distance, ref value);
+
+			return value;
+		}
+
+		/// <summary>
+		/// Retrieves the spline's scale at the spline point
+		/// </summary>
+		public void GetScaleAtSplinePoint(int pointIndex, ref Vector3 value) => getScaleAtSplinePoint(Pointer, pointIndex, ref value);
+
+		/// <summary>
+		/// Returns the spline's scale at the spline point
+		/// </summary>
+		public Vector3 GetScaleAtSplinePoint(int pointIndex) {
+			Vector3 value = default;
+
+			getScaleAtSplinePoint(Pointer, pointIndex, ref value);
+
+			return value;
+		}
+
+		/// <summary>
+		/// Retrieves the spline's scale at the given time from 0.0f to the spline duration
+		/// </summary>
+		public void GetScaleAtTime(float time, bool useConstantVelocity, ref Vector3 value) => getScaleAtTime(Pointer, time, useConstantVelocity, ref value);
+
+		/// <summary>
+		/// Returns the spline's scale at the given time from 0.0f to the spline duration
+		/// </summary>
+		public Vector3 GetScaleAtTime(float time, bool useConstantVelocity = false) {
+			Vector3 value = default;
+
+			getScaleAtTime(Pointer, time, useConstantVelocity, ref value);
+
+			return value;
+		}
+
+		/// <summary>
+		/// Returns the total length along the spline
+		/// </summary>
+		public float GetSplineLength() => getSplineLength(Pointer);
+
+		/// <summary>
+		/// Retrieves the spline's transform at the given time from 0.0f to the spline duration
+		/// </summary>
+		public void GetTransformAtTime(float time, SplineCoordinateSpace coordinateSpace, bool useConstantVelocity, bool useScale, ref Transform value) => getTransformAtTime(Pointer, time, coordinateSpace, useConstantVelocity, useScale, ref value);
+
+		/// <summary>
+		/// Returns the spline's transform at the given time from 0.0f to the spline duration
+		/// </summary>
+		public Transform GetTransformAtTime(float time, SplineCoordinateSpace coordinateSpace, bool useConstantVelocity = false, bool useScale = false) {
+			Transform value = default;
+
+			getTransformAtTime(Pointer, time, coordinateSpace, useConstantVelocity, useScale, ref value);
+
+			return value;
+		}
+
+		/// <summary>
+		/// Retrieves a unit direction vector corresponding to the spline's up vector at the given distance along the length of the spline
+		/// </summary>
+		public void GetUpVectorAtDistanceAlongSpline(float distance, SplineCoordinateSpace coordinateSpace, ref Vector3 value) => getUpVectorAtDistanceAlongSpline(Pointer, distance, coordinateSpace, ref value);
+
+		/// <summary>
+		/// Returns a unit direction vector corresponding to the spline's up vector at the given distance along the length of the spline
+		/// </summary>
+		public Vector3 GetUpVectorAtDistanceAlongSpline(float distance, SplineCoordinateSpace coordinateSpace) {
+			Vector3 value = default;
+
+			getUpVectorAtDistanceAlongSpline(Pointer, distance, coordinateSpace, ref value);
+
+			return value;
+		}
+
+		/// <summary>
+		/// Retrieves the spline's up vector at the spline point
+		/// </summary>
+		public void GetUpVectorAtSplinePoint(int pointIndex, SplineCoordinateSpace coordinateSpace, ref Vector3 value) => getUpVectorAtSplinePoint(Pointer, pointIndex, coordinateSpace, ref value);
+
+		/// <summary>
+		/// Returns the spline's up vector at the spline point
+		/// </summary>
+		public Vector3 GetUpVectorAtSplinePoint(int pointIndex, SplineCoordinateSpace coordinateSpace) {
+			Vector3 value = default;
+
+			getUpVectorAtSplinePoint(Pointer, pointIndex, coordinateSpace, ref value);
+
+			return value;
+		}
+
+		/// <summary>
+		/// Retrieves the spline's up vector at the given time from 0.0f to the spline duration
+		/// </summary>
+		public void GetUpVectorAtTime(float time, SplineCoordinateSpace coordinateSpace, bool useConstantVelocity, ref Vector3 value) => getUpVectorAtTime(Pointer, time, coordinateSpace, useConstantVelocity, ref value);
+
+		/// <summary>
+		/// Returns the spline's up vector at the given time from 0.0f to the spline duration
+		/// </summary>
+		public Vector3 GetUpVectorAtTime(float time, SplineCoordinateSpace coordinateSpace, bool useConstantVelocity = false) {
+			Vector3 value = default;
+
+			getUpVectorAtTime(Pointer, time, coordinateSpace, useConstantVelocity, ref value);
+
+			return value;
+		}
+
+		/// <summary>
+		/// Sets the type of a spline point
+		/// </summary>
+		public void SetSplinePointType(int pointIndex, SplinePointType type, bool updateSpline = true) => setSplinePointType(Pointer, pointIndex, type, updateSpline);
+
+		/// <summary>
+		/// Sets whether the spline is a closed loop
+		/// </summary>
+		public void SetClosedLoop(bool value, bool updateSpline = true) => setClosedLoop(Pointer, value, updateSpline);
+
+		/// <summary>
+		/// Sets the default up vector of the spline
+		/// </summary>
+		public void SetDefaultUpVector(in Vector3 value, SplineCoordinateSpace coordinateSpace) => setDefaultUpVector(Pointer, value, coordinateSpace);
+
+		/// <summary>
+		/// Sets an existing point to a new location
+		/// </summary>
+		public void SetLocationAtSplinePoint(int pointIndex, in Vector3 value, SplineCoordinateSpace coordinateSpace, bool updateSpline = true) => setLocationAtSplinePoint(Pointer, pointIndex, value, coordinateSpace, updateSpline);
+
+		/// <summary>
+		/// Sets the tangent at a given spline point
+		/// </summary>
+		public void SetTangentAtSplinePoint(int pointIndex, in Vector3 tangent, SplineCoordinateSpace coordinateSpace, bool updateSpline = true) => setTangentAtSplinePoint(Pointer, pointIndex, tangent, coordinateSpace, updateSpline);
+
+		/// <summary>
+		/// Sets the tangents at a given spline point
+		/// </summary>
+		public void SetTangentsAtSplinePoint(int pointIndex, in Vector3 arriveTangent, in Vector3 leaveTangent, SplineCoordinateSpace coordinateSpace, bool updateSpline = true) => setTangentsAtSplinePoint(Pointer, pointIndex, arriveTangent, leaveTangent, coordinateSpace, updateSpline);
+
+		/// <summary>
+		/// Sets the up vector at a given spline point
+		/// </summary>
+		public void SetUpVectorAtSplinePoint(int pointIndex, in Vector3 upVector, SplineCoordinateSpace coordinateSpace, bool updateSpline = true) => setUpVectorAtSplinePoint(Pointer, pointIndex, upVector, coordinateSpace, updateSpline);
+
+		/// <summary>
+		/// Adds a point to the spline
+		/// </summary>
+		public void AddSplinePoint(in Vector3 location, SplineCoordinateSpace coordinateSpace, bool updateSpline = true) => addSplinePoint(Pointer, location, coordinateSpace, updateSpline);
+
+		/// <summary>
+		/// Adds a point to the spline at the specified index
+		/// </summary>
+		public void AddSplinePointAtIndex(in Vector3 location, int pointIndex, SplineCoordinateSpace coordinateSpace, bool updateSpline = true) => addSplinePointAtIndex(Pointer, location, pointIndex, coordinateSpace, updateSpline);
+
+		/// <summary>
+		/// Clears all the points in the spline
+		/// </summary>
+		public void ClearSplinePoints(bool updateSpline = true) => clearSplinePoints(Pointer, updateSpline);
+
+		/// <summary>
+		/// Returns a unit direction vector of the spline tangent closest to the location in world space
+		/// </summary>
+		public Vector3 FindDirectionClosestToWorldLocation(in Vector3 location, SplineCoordinateSpace coordinateSpace) {
+			Vector3 value = default;
+
+			findDirectionClosestToWorldLocation(Pointer, location, coordinateSpace, ref value);
+
+			return value;
+		}
+
+		/// <summary>
+		/// Returns a point of the spline closest to the location in world space
+		/// </summary>
+		public Vector3 FindLocationClosestToWorldLocation(in Vector3 location, SplineCoordinateSpace coordinateSpace) {
+			Vector3 value = default;
+
+			findLocationClosestToWorldLocation(Pointer, location, coordinateSpace, ref value);
+
+			return value;
+		}
+
+		/// <summary>
+		/// Returns a unit direction vector corresponding to the spline's up vector closest to the location in world space
+		/// </summary>
+		public Vector3 FindUpVectorClosestToWorldLocation(in Vector3 location, SplineCoordinateSpace coordinateSpace) {
+			Vector3 value = default;
+
+			findUpVectorClosestToWorldLocation(Pointer, location, coordinateSpace, ref value);
+
+			return value;
+		}
+
+		/// <summary>
+		/// Returns a unit direction vector corresponding to the spline's right vector closest to the location in world space
+		/// </summary>
+		public Vector3 FindRightVectorClosestToWorldLocation(in Vector3 location, SplineCoordinateSpace coordinateSpace) {
+			Vector3 value = default;
+
+			findRightVectorClosestToWorldLocation(Pointer, location, coordinateSpace, ref value);
+
+			return value;
+		}
+
+		/// <summary>
+		/// Returns the spline's roll in degrees closest to the location in world space
+		/// </summary>
+		public float FindRollClosestToWorldLocation(in Vector3 location, SplineCoordinateSpace coordinateSpace) => findRollClosestToWorldLocation(Pointer, location, coordinateSpace);
+
+		/// <summary>
+		/// Returns the spline's scale closest to the location in world space
+		/// </summary>
+		public Vector3 FindScaleClosestToWorldLocation(in Vector3 location) {
+			Vector3 value = default;
+
+			findScaleClosestToWorldLocation(Pointer, location, ref value);
+
+			return value;
+		}
+
+		/// <summary>
+		/// Returns a tangent of the spline closest to the location in world space
+		/// </summary>
+		public Vector3 FindTangentClosestToWorldLocation(in Vector3 location, SplineCoordinateSpace coordinateSpace) {
+			Vector3 value = default;
+
+			findTangentClosestToWorldLocation(Pointer, location, coordinateSpace, ref value);
+
+			return value;
+		}
+
+		/// <summary>
+		/// Returns a transform closest to the location in world space
+		/// </summary>
+		public Transform FindTransformClosestToWorldLocation(in Vector3 location, SplineCoordinateSpace coordinateSpace, bool useScale = false) {
+			Transform value = default;
+
+			findTransformClosestToWorldLocation(Pointer, location, coordinateSpace, useScale, ref value);
+
+			return value;
+		}
+
+		/// <summary>
+		/// Removes a point at the specified index from the spline
+		/// </summary>
+		public void RemoveSplinePoint(int pointIndex, bool updateSpline = true) => removeSplinePoint(Pointer, pointIndex, updateSpline);
+
+		/// <summary>
+		/// Updates the spline
+		/// </summary>
+		public void UpdateSpline() => updateSpline(Pointer);
+	}
+
+	/// <summary>
 	/// A component that emits a radial force or impulse that can affect physics objects and destructible objects
 	/// </summary>
-	public partial class RadialForceComponent : SceneComponent {
+	public unsafe partial class RadialForceComponent : SceneComponent {
 		internal override ComponentType Type => ComponentType.RadialForce;
 
 		private protected RadialForceComponent() { }
@@ -8222,7 +11132,7 @@ namespace UnrealEngine.Framework {
 	/// <summary>
 	/// The base class of materials that can be applied to meshes
 	/// </summary>
-	public abstract partial class MaterialInterface : IEquatable<MaterialInterface> {
+	public abstract unsafe partial class MaterialInterface : IEquatable<MaterialInterface> {
 		private IntPtr pointer;
 
 		internal IntPtr Pointer {
@@ -8267,7 +11177,7 @@ namespace UnrealEngine.Framework {
 	/// <summary>
 	/// An asset which can be applied to a mesh to control the visual look
 	/// </summary>
-	public partial class Material : MaterialInterface {
+	public unsafe partial class Material : MaterialInterface {
 		private protected Material() { }
 
 		internal Material(IntPtr pointer) => Pointer = pointer;
@@ -8283,7 +11193,7 @@ namespace UnrealEngine.Framework {
 			IntPtr pointer = Object.load(ObjectType.Material, name);
 
 			if (pointer != IntPtr.Zero)
-				return new Material(pointer);
+				return new(pointer);
 
 			return null;
 		}
@@ -8297,7 +11207,7 @@ namespace UnrealEngine.Framework {
 	/// <summary>
 	/// An abstract instance of the material
 	/// </summary>
-	public abstract partial class MaterialInstance : MaterialInterface {
+	public abstract unsafe partial class MaterialInstance : MaterialInterface {
 		private protected MaterialInstance() { }
 
 		/// <summary>
@@ -8309,12 +11219,24 @@ namespace UnrealEngine.Framework {
 
 			return isChildOf(Pointer, material.Pointer);
 		}
+
+		/// <summary>
+		/// Returns the parent material or <c>null</c> on failure
+		/// </summary>
+		public MaterialInstanceDynamic GetParent() {
+			IntPtr pointer = getParent(Pointer);
+
+			if (pointer != IntPtr.Zero)
+				return new(pointer);
+
+			return null;
+		}
 	}
 
 	/// <summary>
 	/// A dynamic instance of the material
 	/// </summary>
-	public partial class MaterialInstanceDynamic : MaterialInstance {
+	public unsafe partial class MaterialInstanceDynamic : MaterialInstance {
 		private protected MaterialInstanceDynamic() { }
 
 		internal MaterialInstanceDynamic(IntPtr pointer) => Pointer = pointer;

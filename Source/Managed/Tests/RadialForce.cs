@@ -1,14 +1,11 @@
 using System;
 using System.Drawing;
 using System.Numerics;
-using System.Reflection;
 using UnrealEngine.Framework;
 
 namespace UnrealEngine.Tests {
-	public static class RadialForce {
-		public static void OnBeginPlay() {
-			Debug.AddOnScreenMessage(-1, 3.0f, Color.LightGreen, MethodBase.GetCurrentMethod().DeclaringType + " system started!");
-
+	public class RadialForce : ISystem {
+		public void OnBeginPlay() {
 			World.GetFirstPlayerController().SetViewTarget(World.GetActor<Camera>("MainCamera"));
 
 			const int maxActors = 100;
@@ -17,8 +14,8 @@ namespace UnrealEngine.Tests {
 			StaticMeshComponent[] staticMeshComponents = new StaticMeshComponent[maxActors];
 
 			for (int i = 0; i < maxActors; i++) {
-				actors[i] = new Actor();
-				staticMeshComponents[i] = new StaticMeshComponent(actors[i], setAsRoot: true);
+				actors[i] = new();
+				staticMeshComponents[i] = new(actors[i], setAsRoot: true);
 				staticMeshComponents[i].SetStaticMesh(StaticMesh.Cube);
 				staticMeshComponents[i].SetMaterial(0, Material.Load("/Game/Tests/BasicMaterial"));
 				staticMeshComponents[i].CreateAndSetMaterialInstanceDynamic(0).SetVectorParameterValue("Color", LinearColor.Red);
@@ -28,18 +25,18 @@ namespace UnrealEngine.Tests {
 				staticMeshComponents[i].SetCollisionChannel(CollisionChannel.PhysicsBody);
 			}
 
-			RadialForceComponent radialForceComponent = new RadialForceComponent(new Actor(), setAsRoot: true);
+			RadialForceComponent radialForceComponent = new(new(), setAsRoot: true);
 
 			radialForceComponent.IgnoreOwningActor = true;
 			radialForceComponent.ImpulseVelocityChange = true;
 			radialForceComponent.LinearFalloff = true;
 			radialForceComponent.ForceStrength = 10000000.0f;
 			radialForceComponent.Radius = 1000;
-			radialForceComponent.SetRelativeLocation(new Vector3(10000.0f, 0.0f, -100.0f));
+			radialForceComponent.SetRelativeLocation(new(10000.0f, 0.0f, -100.0f));
 
 			Debug.AddOnScreenMessage(-1, 3.0f, Color.LightGreen, "Actors are spawned! Number of actors in the world: " + World.ActorCount);
 		}
 
-		public static void OnEndPlay() => Debug.ClearOnScreenMessages();
+		public void OnEndPlay() => Debug.ClearOnScreenMessages();
 	}
 }

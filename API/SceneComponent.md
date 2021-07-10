@@ -2,7 +2,7 @@
 ## SceneComponent Class
 The base class of components that can be transformed or attached, but has no rendering or collision capabilities  
 ```csharp
-public class SceneComponent : ActorComponent
+public class SceneComponent : UnrealEngine.Framework.ActorComponent
 ```
 Inheritance [System.Object](https://docs.microsoft.com/en-us/dotnet/api/System.Object 'System.Object') &#129106; [ActorComponent](./ActorComponent.md 'UnrealEngine.Framework.ActorComponent') &#129106; SceneComponent  
 
@@ -11,12 +11,15 @@ Derived
 &#8627; [CameraComponent](./CameraComponent.md 'UnrealEngine.Framework.CameraComponent')  
 &#8627; [ChildActorComponent](./ChildActorComponent.md 'UnrealEngine.Framework.ChildActorComponent')  
 &#8627; [LightComponentBase](./LightComponentBase.md 'UnrealEngine.Framework.LightComponentBase')  
+&#8627; [PostProcessComponent](./PostProcessComponent.md 'UnrealEngine.Framework.PostProcessComponent')  
 &#8627; [PrimitiveComponent](./PrimitiveComponent.md 'UnrealEngine.Framework.PrimitiveComponent')  
 &#8627; [RadialForceComponent](./RadialForceComponent.md 'UnrealEngine.Framework.RadialForceComponent')  
+&#8627; [SpringArmComponent](./SpringArmComponent.md 'UnrealEngine.Framework.SpringArmComponent')  
 ### Constructors
 - [SceneComponent(UnrealEngine.Framework.Actor, string, bool, UnrealEngine.Framework.Blueprint)](./SceneComponent-SceneComponent(Actor_string_bool_Blueprint).md 'UnrealEngine.Framework.SceneComponent.SceneComponent(UnrealEngine.Framework.Actor, string, bool, UnrealEngine.Framework.Blueprint)')
 ### Properties
 - [HasAnySockets](./SceneComponent-HasAnySockets.md 'UnrealEngine.Framework.SceneComponent.HasAnySockets')
+- [IsVisible](./SceneComponent-IsVisible.md 'UnrealEngine.Framework.SceneComponent.IsVisible')
 ### Methods
 - [Activate()](./SceneComponent-Activate().md 'UnrealEngine.Framework.SceneComponent.Activate()')
 - [AddLocalOffset(System.Numerics.Vector3)](./SceneComponent-AddLocalOffset(Vector3).md 'UnrealEngine.Framework.SceneComponent.AddLocalOffset(System.Numerics.Vector3)')
@@ -28,9 +31,12 @@ Derived
 - [AddWorldRotation(System.Numerics.Quaternion)](./SceneComponent-AddWorldRotation(Quaternion).md 'UnrealEngine.Framework.SceneComponent.AddWorldRotation(System.Numerics.Quaternion)')
 - [AddWorldTransform(UnrealEngine.Framework.Transform)](./SceneComponent-AddWorldTransform(Transform).md 'UnrealEngine.Framework.SceneComponent.AddWorldTransform(UnrealEngine.Framework.Transform)')
 - [AttachToComponent(UnrealEngine.Framework.SceneComponent, UnrealEngine.Framework.AttachmentTransformRule, string)](./SceneComponent-AttachToComponent(SceneComponent_AttachmentTransformRule_string).md 'UnrealEngine.Framework.SceneComponent.AttachToComponent(UnrealEngine.Framework.SceneComponent, UnrealEngine.Framework.AttachmentTransformRule, string)')
+- [CanAttachAsChild(UnrealEngine.Framework.SceneComponent, string)](./SceneComponent-CanAttachAsChild(SceneComponent_string).md 'UnrealEngine.Framework.SceneComponent.CanAttachAsChild(UnrealEngine.Framework.SceneComponent, string)')
 - [Deactivate()](./SceneComponent-Deactivate().md 'UnrealEngine.Framework.SceneComponent.Deactivate()')
 - [DetachFromComponent(UnrealEngine.Framework.DetachmentTransformRule)](./SceneComponent-DetachFromComponent(DetachmentTransformRule).md 'UnrealEngine.Framework.SceneComponent.DetachFromComponent(UnrealEngine.Framework.DetachmentTransformRule)')
+- [ForEachAttachedChild&lt;T&gt;(System.Action&lt;T&gt;)](./SceneComponent-ForEachAttachedChild-T-(Action-T-).md 'UnrealEngine.Framework.SceneComponent.ForEachAttachedChild&lt;T&gt;(System.Action&lt;T&gt;)')
 - [GetAttachedSocketName()](./SceneComponent-GetAttachedSocketName().md 'UnrealEngine.Framework.SceneComponent.GetAttachedSocketName()')
+- [GetBounds(UnrealEngine.Framework.Transform, UnrealEngine.Framework.Bounds)](./SceneComponent-GetBounds(Transform_Bounds).md 'UnrealEngine.Framework.SceneComponent.GetBounds(UnrealEngine.Framework.Transform, UnrealEngine.Framework.Bounds)')
 - [GetForwardVector()](./SceneComponent-GetForwardVector().md 'UnrealEngine.Framework.SceneComponent.GetForwardVector()')
 - [GetForwardVector(System.Numerics.Vector3)](./SceneComponent-GetForwardVector(Vector3).md 'UnrealEngine.Framework.SceneComponent.GetForwardVector(System.Numerics.Vector3)')
 - [GetLocation()](./SceneComponent-GetLocation().md 'UnrealEngine.Framework.SceneComponent.GetLocation()')
@@ -58,6 +64,7 @@ Derived
 - [SetRelativeLocation(System.Numerics.Vector3)](./SceneComponent-SetRelativeLocation(Vector3).md 'UnrealEngine.Framework.SceneComponent.SetRelativeLocation(System.Numerics.Vector3)')
 - [SetRelativeRotation(System.Numerics.Quaternion)](./SceneComponent-SetRelativeRotation(Quaternion).md 'UnrealEngine.Framework.SceneComponent.SetRelativeRotation(System.Numerics.Quaternion)')
 - [SetRelativeTransform(UnrealEngine.Framework.Transform)](./SceneComponent-SetRelativeTransform(Transform).md 'UnrealEngine.Framework.SceneComponent.SetRelativeTransform(UnrealEngine.Framework.Transform)')
+- [SetVisibility(bool, bool)](./SceneComponent-SetVisibility(bool_bool).md 'UnrealEngine.Framework.SceneComponent.SetVisibility(bool, bool)')
 - [SetWorldLocation(System.Numerics.Vector3)](./SceneComponent-SetWorldLocation(Vector3).md 'UnrealEngine.Framework.SceneComponent.SetWorldLocation(System.Numerics.Vector3)')
 - [SetWorldRotation(System.Numerics.Quaternion)](./SceneComponent-SetWorldRotation(Quaternion).md 'UnrealEngine.Framework.SceneComponent.SetWorldRotation(System.Numerics.Quaternion)')
 - [SetWorldScale(System.Numerics.Vector3)](./SceneComponent-SetWorldScale(Vector3).md 'UnrealEngine.Framework.SceneComponent.SetWorldScale(System.Numerics.Vector3)')

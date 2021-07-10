@@ -1,38 +1,55 @@
 /*
- * Copyright (c) 2020 Stanislav Denisov (nxrighthere@gmail.com)
+ *  Unreal Engine .NET 5 integration 
+ *  Copyright (c) 2021 Stanislav Denisov
  *
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the GNU Lesser General Public License
- * (LGPL) version 3 with a static linking exception which accompanies this
- * distribution.
+ *  Permission is hereby granted, free of charge, to any person obtaining a copy
+ *  of this software and associated documentation files (the "Software"), to deal
+ *  in the Software without restriction, including without limitation the rights
+ *  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ *  copies of the Software, and to permit persons to whom the Software is
+ *  furnished to do so, subject to the following conditions:
  *
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
+ *  The above copyright notice and this permission notice shall be included in all
+ *  copies or substantial portions of the Software.
+ *
+ *  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ *  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ *  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ *  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ *  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ *  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ *  SOFTWARE.
  */
 
 #pragma once
 
-UNREALCLR_API DECLARE_LOG_CATEGORY_EXTERN(LogUnrealAssert, Log, All);
 UNREALCLR_API DECLARE_LOG_CATEGORY_EXTERN(LogUnrealManaged, Log, All);
 
 namespace UnrealCLRFramework {
 	using AnimationMode = EAnimationMode::Type;
+	using AutoReceiveInput = EAutoReceiveInput::Type;
 	using CameraProjectionMode = ECameraProjectionMode::Type;
 	using CollisionMode = ECollisionEnabled::Type;
 	using CollisionShapeType = ECollisionShape::Type;
 	using ComponentMobility = EComponentMobility::Type;
+	using SplineCoordinateSpace = ESplineCoordinateSpace::Type;
+	using SplinePointType = ESplinePointType::Type;
 	using WindowMode = EWindowMode::Type;
 
 	using AudioFadeCurve = EAudioFaderCurve;
+	using AutoPossessAI = EAutoPossessAI;
 	using BlendType = EViewTargetBlendFunction;
 	using CollisionChannel = ECollisionChannel;
 	using CollisionResponse = ECollisionResponse;
 	using ControllerHand = EControllerHand;
+	using HorizontalTextAligment = EHorizTextAligment;
 	using InputEvent = EInputEvent;
 	using NetMode = ENetMode;
+	using PixelFormat = EPixelFormat;
+	using TeleportType = ETeleportType;
+	using VerticalTextAligment = EVerticalTextAligment;
 
+	using Bounds = FBoxSphereBounds;
 	using CollisionShape = FCollisionShape;
 
 	enum struct LogLevel : int32 {
@@ -54,12 +71,6 @@ namespace UnrealCLRFramework {
 		KeepWorldTransform
 	};
 
-	enum struct TeleportType : int32 {
-		None,
-		TeleportPhysics,
-		ResetPhysics
-	};
-
 	enum struct UpdateTransformFlags : int32 {
 		None = 0,
 		SkipPhysicsUpdate = 1 << 0,
@@ -76,13 +87,21 @@ namespace UnrealCLRFramework {
 	enum struct ActorEventType : int32 {
 		OnActorBeginOverlap,
 		OnActorEndOverlap,
-		OnActorHit
+		OnActorHit,
+		OnActorBeginCursorOver,
+		OnActorEndCursorOver,
+		OnActorClicked,
+		OnActorReleased
 	};
 
 	enum struct ComponentEventType : int32 {
 		OnComponentBeginOverlap,
 		OnComponentEndOverlap,
-		OnComponentHit
+		OnComponentHit,
+		OnComponentBeginCursorOver,
+		OnComponentEndCursorOver,
+		OnComponentClicked,
+		OnComponentReleased
 	};
 
 	struct Color {
@@ -143,6 +162,19 @@ namespace UnrealCLRFramework {
 		FORCEINLINE operator FQuat() const { return FQuat(X, Y, Z, W); }
 	};
 
+	struct Transform {
+		Vector3 Location;
+		Quaternion Rotation;
+		Vector3 Scale;
+
+		FORCEINLINE Transform(const FTransform& Value) :
+			Location(Value.GetTranslation()),
+			Rotation(Value.GetRotation()),
+			Scale(Value.GetScale3D()) { }
+
+		FORCEINLINE operator FTransform() const { return FTransform(Rotation, Location, Scale); }
+	};
+
 	struct LinearColor {
 		float R;
 		float G;
@@ -157,19 +189,6 @@ namespace UnrealCLRFramework {
 		}
 
 		FORCEINLINE operator FLinearColor() const { return FLinearColor(R, G, B, A); }
-	};
-
-	struct Transform {
-		Quaternion Rotation;
-		Vector3 Location;
-		Vector3 Scale;
-
-		FORCEINLINE Transform(const FTransform& Value) :
-			Rotation(Value.GetRotation()),
-			Location(Value.GetTranslation()),
-			Scale(Value.GetScale3D()) { }
-
-		FORCEINLINE operator FTransform() const { return FTransform(Rotation, Location, Scale); }
 	};
 
 	struct Hit {
@@ -211,11 +230,21 @@ namespace UnrealCLRFramework {
 
 	typedef void (*ActorOverlapDelegate)(AActor*, AActor*);
 
-	typedef void (*ActorHitDelegate)(AActor* HitActor, AActor* OtherActor, Vector3* NormalImpulse, Hit* Hit);
+	typedef void (*ActorHitDelegate)(AActor* HitActor, AActor* OtherActor, const Vector3* NormalImpulse, const Hit* Hit);
+
+	typedef void (*ActorCursorDelegate)(AActor* Actor);
+
+	typedef void (*ActorKeyDelegate)(AActor* Actor, const char* Key);
 
 	typedef void (*ComponentOverlapDelegate)(UPrimitiveComponent*, UPrimitiveComponent*);
 
-	typedef void (*ComponentHitDelegate)(UPrimitiveComponent* HitComponent, UPrimitiveComponent* OtherComponent, Vector3* NormalImpulse, Hit* Hit);
+	typedef void (*ComponentHitDelegate)(UPrimitiveComponent* HitComponent, UPrimitiveComponent* OtherComponent, const Vector3* NormalImpulse, const Hit* Hit);
+
+	typedef void (*ComponentCursorDelegate)(UPrimitiveComponent* Component);
+
+	typedef void (*ComponentKeyDelegate)(UPrimitiveComponent* Component, const char* Key);
+
+	typedef void (*CharacterLandedDelegate)(const Hit* Hit);
 
 	// Enumerable
 
@@ -227,6 +256,7 @@ namespace UnrealCLRFramework {
 		StaticMesh,
 		SkeletalMesh,
 		Material,
+		Font,
 		Texture2D
 	};
 
@@ -248,7 +278,8 @@ namespace UnrealCLRFramework {
 		SpotLight,
 		TriggerVolume,
 		PostProcessVolume,
-		LevelScript
+		LevelScript,
+		GameModeBase
 	};
 
 	enum struct ComponentType : int32 {
@@ -264,18 +295,23 @@ namespace UnrealCLRFramework {
 		MotionController,
 		StaticMesh,
 		InstancedStaticMesh,
+		HierarchicalInstancedStaticMesh,
 		ChildActor,
+		SpringArm,
+		PostProcess,
 		Box,
 		Sphere,
 		Capsule,
+		TextRender,
 		SkeletalMesh,
+		Spline,
 		RadialForce
 	};
 
 	// Non-instantiable
 
 	namespace Assert {
-		static void OutputMessage(const char* Message);
+		static void OutputMessage(const uint8* Message);
 	}
 
 	namespace CommandLine {
@@ -285,9 +321,9 @@ namespace UnrealCLRFramework {
 	}
 
 	namespace Debug {
-		static void Log(LogLevel Level, const char* Message);
-		static void HandleException(const char* Exception);
-		static void AddOnScreenMessage(int32 Key, float TimeToDisplay, Color DisplayColor, const char* Message);
+		static void Log(LogLevel Level, const uint8* Message);
+		static void Exception(const uint8* Exception);
+		static void AddOnScreenMessage(int32 Key, float TimeToDisplay, Color DisplayColor, const uint8* Message);
 		static void ClearOnScreenMessages();
 		static void DrawBox(const Vector3* Center, const Vector3* Extent, const Quaternion* Rotation, Color Color, bool PersistentLines, float LifeTime, uint8 DepthPriority, float Thickness);
 		static void DrawCapsule(const Vector3* Center, float HalfHeight, float Radius, const Quaternion* Rotation, Color Color, bool PersistentLines, float LifeTime, uint8 DepthPriority, float Thickness);
@@ -304,12 +340,13 @@ namespace UnrealCLRFramework {
 		static bool IsValid(UObject* Object);
 		static UObject* Load(ObjectType Type, const char* Name);
 		static void Rename(UObject* Object, const char* Name);
+		static bool Invoke(UObject* Object, const uint8* Command);
 		static AActor* ToActor(UObject* Object, ActorType Type);
 		static UActorComponent* ToComponent(UObject* Object, ComponentType Type);
 		static uint32 GetID(UObject* Object);
 		static void GetName(UObject* Object, char* Name);
 		static bool GetBool(UObject* Object, const char* Name, bool* value);
-		static bool GetByte(UObject* Object, const char* Name, int8* Value);
+		static bool GetByte(UObject* Object, const char* Name, uint8* Value);
 		static bool GetShort(UObject* Object, const char* Name, int16* Value);
 		static bool GetInt(UObject* Object, const char* Name, int32* Value);
 		static bool GetLong(UObject* Object, const char* Name, int64* Value);
@@ -318,9 +355,11 @@ namespace UnrealCLRFramework {
 		static bool GetULong(UObject* Object, const char* Name, uint64* Value);
 		static bool GetFloat(UObject* Object, const char* Name, float* Value);
 		static bool GetDouble(UObject* Object, const char* Name, double* Value);
+		static bool GetEnum(UObject* Object, const char* Name, int32* Value);
+		static bool GetString(UObject* Object, const char* Name, char* Value);
 		static bool GetText(UObject* Object, const char* Name, char* Value);
 		static bool SetBool(UObject* Object, const char* Name, bool value);
-		static bool SetByte(UObject* Object, const char* Name, int8 Value);
+		static bool SetByte(UObject* Object, const char* Name, uint8 Value);
 		static bool SetShort(UObject* Object, const char* Name, int16 Value);
 		static bool SetInt(UObject* Object, const char* Name, int32 Value);
 		static bool SetLong(UObject* Object, const char* Name, int64 Value);
@@ -329,6 +368,8 @@ namespace UnrealCLRFramework {
 		static bool SetULong(UObject* Object, const char* Name, uint64 Value);
 		static bool SetFloat(UObject* Object, const char* Name, float Value);
 		static bool SetDouble(UObject* Object, const char* Name, double Value);
+		static bool SetEnum(UObject* Object, const char* Name, int32 Value);
+		static bool SetString(UObject* Object, const char* Name, const char* Value);
 		static bool SetText(UObject* Object, const char* Name, const char* Value);
 	}
 
@@ -386,6 +427,7 @@ namespace UnrealCLRFramework {
 	}
 
 	namespace World {
+		static void ForEachActor(AActor** Array, int32* Elements);
 		static int32 GetActorCount();
 		static float GetDeltaSeconds();
 		static float GetRealTimeSeconds();
@@ -397,12 +439,21 @@ namespace UnrealCLRFramework {
 		static AActor* GetActorByTag(const char* Tag, ActorType Type);
 		static AActor* GetActorByID(uint32 ID, ActorType Type);
 		static APlayerController* GetFirstPlayerController();
+		static AGameModeBase* GetGameMode();
 		static void SetOnActorBeginOverlapCallback(ActorOverlapDelegate Callback);
 		static void SetOnActorEndOverlapCallback(ActorOverlapDelegate Callback);
 		static void SetOnActorHitCallback(ActorHitDelegate Callback);
+		static void SetOnActorBeginCursorOverCallback(ActorCursorDelegate Callback);
+		static void SetOnActorEndCursorOverCallback(ActorCursorDelegate Callback);
+		static void SetOnActorClickedCallback(ActorKeyDelegate Callback);
+		static void SetOnActorReleasedCallback(ActorKeyDelegate Callback);
 		static void SetOnComponentBeginOverlapCallback(ComponentOverlapDelegate Callback);
 		static void SetOnComponentEndOverlapCallback(ComponentOverlapDelegate Callback);
 		static void SetOnComponentHitCallback(ComponentHitDelegate Callback);
+		static void SetOnComponentBeginCursorOverCallback(ComponentCursorDelegate Callback);
+		static void SetOnComponentEndCursorOverCallback(ComponentCursorDelegate Callback);
+		static void SetOnComponentClickedCallback(ComponentKeyDelegate Callback);
+		static void SetOnComponentReleasedCallback(ComponentKeyDelegate Callback);
 		static void SetSimulatePhysics(bool Value);
 		static void SetGravity(float Value);
 		static bool SetWorldOrigin(const Vector3* Value);
@@ -422,6 +473,18 @@ namespace UnrealCLRFramework {
 	}
 
 	// Instantiable
+
+	namespace Asset {
+		static bool IsValid(FAssetData* Asset);
+		static void GetName(FAssetData* Asset, char* Name);
+		static void GetPath(FAssetData* Asset, char* Path);
+	}
+
+	namespace AssetRegistry {
+		static IAssetRegistry* Get();
+		static bool HasAssets(IAssetRegistry* AssetRegistry, const char* Path, bool Recursive);
+		static void ForEachAsset(IAssetRegistry* AssetRegistry, const char* Path, bool Recursive, bool IncludeOnlyOnDiskAssets, FAssetData** Array, int32* Elements);
+	}
 
 	namespace Blueprint {
 		static bool IsValidActorClass(UBlueprint* Blueprint, ActorType Type);
@@ -452,6 +515,10 @@ namespace UnrealCLRFramework {
 		static bool IsPendingKill(AActor* Actor);
 		static bool IsRootComponentMovable(AActor* Actor);
 		static bool IsOverlappingActor(AActor* Actor, AActor* Other);
+		static void ForEachComponent(AActor* Actor, UActorComponent** Array, int32* Elements);
+		static void ForEachAttachedActor(AActor* Actor, AActor** Array, int32* Elements);
+		static void ForEachChildActor(AActor* Actor, AActor** Array, int32* Elements);
+		static void ForEachOverlappingActor(AActor* Actor, AActor** Array, int32* Elements);
 		static AActor* Spawn(const char* Name, ActorType Type, UObject* Blueprint);
 		static bool Destroy(AActor* Actor);
 		static void Rename(AActor* Actor, const char* Name);
@@ -481,6 +548,12 @@ namespace UnrealCLRFramework {
 		static void UnregisterEvent(AActor* Actor, ActorEventType Type);
 	}
 
+	namespace GameModeBase {
+		static bool GetUseSeamlessTravel(AGameModeBase* GameModeBase);
+		static void SetUseSeamlessTravel(AGameModeBase* GameModeBase, bool Value);
+		static void SwapPlayerControllers(AGameModeBase* GameModeBase, APlayerController* PlayerController, APlayerController* NewPlayerController);
+	}
+
 	namespace TriggerBase { }
 
 	namespace TriggerBox { }
@@ -490,15 +563,39 @@ namespace UnrealCLRFramework {
 	namespace TriggerSphere { }
 
 	namespace Pawn {
+		static bool IsControlled(APawn* Pawn);
+		static bool IsPlayerControlled(APawn* Pawn);
+		static AutoPossessAI GetAutoPossessAI(APawn* Pawn);
+		static AutoReceiveInput GetAutoPossessPlayer(APawn* Pawn);
+		static bool GetUseControllerRotationYaw(APawn* Pawn);
+		static bool GetUseControllerRotationPitch(APawn* Pawn);
+		static bool GetUseControllerRotationRoll(APawn* Pawn);
+		static void GetGravityDirection(APawn* Pawn, Vector3* Value);
+		static AAIController* GetAIController(APawn* Pawn);
+		static APlayerController* GetPlayerController(APawn* Pawn);
+		static void SetAutoPossessAI(APawn* Pawn, AutoPossessAI Value);
+		static void SetAutoPossessPlayer(APawn* Pawn, AutoReceiveInput Value);
+		static void SetUseControllerRotationYaw(APawn* Pawn, bool Value);
+		static void SetUseControllerRotationPitch(APawn* Pawn, bool Value);
+		static void SetUseControllerRotationRoll(APawn* Pawn, bool Value);
 		static void AddControllerYawInput(APawn* Pawn, float Value);
 		static void AddControllerPitchInput(APawn* Pawn, float Value);
 		static void AddControllerRollInput(APawn* Pawn, float Value);
 		static void AddMovementInput(APawn* Pawn, const Vector3* WorldDirection, float ScaleValue, bool Force);
-		static void GetGravityDirection(APawn* Pawn, Vector3* Value);
 	}
 
 	namespace Character {
-		
+		static bool IsCrouched(ACharacter* Character);
+		static bool CanCrouch(ACharacter* Character);
+		static bool CanJump(ACharacter* Character);
+		static void CheckJumpInput(ACharacter* Character, float DeltaTime);
+		static void ClearJumpInput(ACharacter* Character, float DeltaTime);
+		static void Launch(ACharacter* Character, const Vector3* Velocity, bool OverrideXY, bool OverrideZ);
+		static void Crouch(ACharacter* Character);
+		static void StopCrouching(ACharacter* Character);
+		static void Jump(ACharacter* Character);
+		static void StopJumping(ACharacter* Character);
+		static void SetOnLandedCallback(ACharacter* Character, CharacterLandedDelegate Callback);
 	}
 
 	namespace Controller {
@@ -506,12 +603,19 @@ namespace UnrealCLRFramework {
 		static bool IsMoveInputIgnored(AController* Controller);
 		static bool IsPlayerController(AController* Controller);
 		static APawn* GetPawn(AController* Controller);
+		static ACharacter* GetCharacter(AController* Controller);
+		static AActor* GetViewTarget(AController* Controller);
+		static void GetControlRotation(AController* Controller, Quaternion* Value);
+		static void GetDesiredRotation(AController* Controller, Quaternion* Value);
 		static bool LineOfSightTo(AController* Controller, AActor* Actor, const Vector3* ViewPoint, bool AlternateChecks);
+		static void SetControlRotation(AController* Controller, const Quaternion* Value);
 		static void SetInitialLocationAndRotation(AController* Controller, const Vector3* NewLocation, const Quaternion* NewRotation);
 		static void SetIgnoreLookInput(AController* Controller, bool Value);
 		static void SetIgnoreMoveInput(AController* Controller, bool Value);
 		static void ResetIgnoreLookInput(AController* Controller);
 		static void ResetIgnoreMoveInput(AController* Controller);
+		static void Possess(AController* Controller, APawn* Pawn);
+		static void Unpossess(AController* Controller);
 	}
 
 	namespace AIController {
@@ -527,10 +631,16 @@ namespace UnrealCLRFramework {
 	namespace PlayerController {
 		static bool IsPaused(APlayerController* PlayerController);
 		static bool GetShowMouseCursor(APlayerController* PlayerController);
+		static bool GetEnableClickEvents(APlayerController* PlayerController);
+		static bool GetEnableMouseOverEvents(APlayerController* PlayerController);
 		static bool GetMousePosition(APlayerController* PlayerController, float* X, float* Y);
 		static UPlayer* GetPlayer(APlayerController* PlayerController);
 		static UPlayerInput* GetPlayerInput(APlayerController* PlayerController);
+		static bool GetHitResultAtScreenPosition(APlayerController* PlayerController, const Vector2* ScreenPosition, CollisionChannel TraceChannel, Hit* Hit, bool TraceComplex);
+		static bool GetHitResultUnderCursor(APlayerController* PlayerController, CollisionChannel TraceChannel, Hit* Hit, bool TraceComplex);
 		static void SetShowMouseCursor(APlayerController* PlayerController, bool Value);
+		static void SetEnableClickEvents(APlayerController* PlayerController, bool Value);
+		static void SetEnableMouseOverEvents(APlayerController* PlayerController, bool Value);
 		static void SetMousePosition(APlayerController* PlayerController, float X, float Y);
 		static void ConsoleCommand(APlayerController* PlayerController, const char* Command, bool WriteToLog);
 		static bool SetPause(APlayerController* PlayerController, bool Value);
@@ -636,6 +746,10 @@ namespace UnrealCLRFramework {
 		static void RemoveAxisMapping(UPlayerInput* PlayerInput, const char* AxisName, const char* Key);
 	}
 
+	namespace Font {
+		static void GetStringSize(UFont* Font, const char* Text, int32* Height, int32* Width);
+	}
+
 	namespace StreamableRenderAsset {
 
 	}
@@ -653,13 +767,17 @@ namespace UnrealCLRFramework {
 	}
 
 	namespace Texture2D {
+		static UTexture2D* CreateFromFile(const char* FilePath);
+		static UTexture2D* CreateFromBuffer(const uint8* Buffer, int32 Length);
+		static bool HasAlphaChannel(UTexture2D* Texture2D);
 		static void GetSize(UTexture2D* Texture2D, Vector2* Value);
+		static PixelFormat GetPixelFormat(UTexture2D* Texture2D);
 	}
 
 	namespace ActorComponent {
 		static bool IsOwnerSelected(UActorComponent* ActorComponent);
 		static AActor* GetOwner(UActorComponent* ActorComponent, ActorType Type);
-		static void Destroy(UActorComponent* ActorComponent, bool PromoteChildren);
+		static void Destroy(UActorComponent* ActorComponent, bool PromoteChild);
 		static void AddTag(UActorComponent* ActorComponent, const char* Tag);
 		static void RemoveTag(UActorComponent* ActorComponent, const char* Tag);
 		static bool HasTag(UActorComponent* ActorComponent, const char* Tag);
@@ -681,8 +799,11 @@ namespace UnrealCLRFramework {
 	namespace SceneComponent {
 		static bool IsAttachedToComponent(USceneComponent* SceneComponent, USceneComponent* Component);
 		static bool IsAttachedToActor(USceneComponent* SceneComponent, AActor* Actor);
+		static bool IsVisible(USceneComponent* SceneComponent);
 		static bool IsSocketExists(USceneComponent* SceneComponent, const char* SocketName);
 		static bool HasAnySockets(USceneComponent* SceneComponent);
+		static bool CanAttachAsChild(USceneComponent* SceneComponent, USceneComponent* ChildComponent, const char* SocketName);
+		static void ForEachAttachedChild(USceneComponent* SceneComponent, USceneComponent** Array, int32* Elements);
 		static USceneComponent* Create(AActor* Actor, ComponentType Type, const char* Name, bool SetAsRoot, UObject* Blueprint);
 		static bool AttachToComponent(USceneComponent* SceneComponent, USceneComponent* Parent, AttachmentTransformRule AttachmentRule, const char* SocketName);
 		static void DetachFromComponent(USceneComponent* SceneComponent, DetachmentTransformRule DetachmentRule);
@@ -698,6 +819,7 @@ namespace UnrealCLRFramework {
 		static void AddWorldRotation(USceneComponent* SceneComponent, const Quaternion* DeltaRotation);
 		static void AddWorldTransform(USceneComponent* SceneComponent, const Transform* DeltaTransform);
 		static void GetAttachedSocketName(USceneComponent* SceneComponent, char* SocketName);
+		static void GetBounds(USceneComponent* SceneComponent, const Transform* LocalToWorld, Bounds* Value);
 		static void GetSocketLocation(USceneComponent* SceneComponent, const char* SocketName, Vector3* Value);
 		static void GetSocketRotation(USceneComponent* SceneComponent, const char* SocketName, Quaternion* Value);
 		static void GetComponentVelocity(USceneComponent* SceneComponent, Vector3* Value);
@@ -709,6 +831,7 @@ namespace UnrealCLRFramework {
 		static void GetRightVector(USceneComponent* SceneComponent, Vector3* Value);
 		static void GetUpVector(USceneComponent* SceneComponent, Vector3* Value);
 		static void SetMobility(USceneComponent* SceneComponent, ComponentMobility Mobility);
+		static void SetVisibility(USceneComponent* SceneComponent, bool NewVisibility, bool PropagateToChildren);
 		static void SetRelativeLocation(USceneComponent* SceneComponent, const Vector3* Location);
 		static void SetRelativeRotation(USceneComponent* SceneComponent, const Quaternion* Rotation);
 		static void SetRelativeTransform(USceneComponent* SceneComponent, const Transform* Transform);
@@ -748,12 +871,70 @@ namespace UnrealCLRFramework {
 	}
 
 	namespace ChildActorComponent {
+		static AActor* GetChildActor(UChildActorComponent* ChildActorComponent, ActorType Type);
 		static AActor* SetChildActor(UChildActorComponent* ChildActorComponent, ActorType Type);
+	}
+
+	namespace SpringArmComponent {
+		static bool IsCollisionFixApplied(USpringArmComponent* SpringArmComponent);
+		static bool GetDrawDebugLagMarkers(USpringArmComponent* SpringArmComponent);
+		static bool GetCollisionTest(USpringArmComponent* SpringArmComponent);
+		static bool GetCameraPositionLag(USpringArmComponent* SpringArmComponent);
+		static bool GetCameraRotationLag(USpringArmComponent* SpringArmComponent);
+		static bool GetCameraLagSubstepping(USpringArmComponent* SpringArmComponent);
+		static bool GetInheritPitch(USpringArmComponent* SpringArmComponent);
+		static bool GetInheritRoll(USpringArmComponent* SpringArmComponent);
+		static bool GetInheritYaw(USpringArmComponent* SpringArmComponent);
+		static float GetCameraLagMaxDistance(USpringArmComponent* SpringArmComponent);
+		static float GetCameraLagMaxTimeStep(USpringArmComponent* SpringArmComponent);
+		static float GetCameraPositionLagSpeed(USpringArmComponent* SpringArmComponent);
+		static float GetCameraRotationLagSpeed(USpringArmComponent* SpringArmComponent);
+		static CollisionChannel GetProbeChannel(USpringArmComponent* SpringArmComponent);
+		static float GetProbeSize(USpringArmComponent* SpringArmComponent);
+		static void GetSocketOffset(USpringArmComponent* SpringArmComponent, Vector3* Value);
+		static float GetTargetArmLength(USpringArmComponent* SpringArmComponent);
+		static void GetTargetOffset(USpringArmComponent* SpringArmComponent, Vector3* Value);
+		static void GetUnfixedCameraPosition(USpringArmComponent* SpringArmComponent, Vector3* Value);
+		static void GetDesiredRotation(USpringArmComponent* SpringArmComponent, Quaternion* Value);
+		static void GetTargetRotation(USpringArmComponent* SpringArmComponent, Quaternion* Value);
+		static bool GetUsePawnControlRotation(USpringArmComponent* SpringArmComponent);
+		static void SetDrawDebugLagMarkers(USpringArmComponent* SpringArmComponent, bool Value);
+		static void SetCollisionTest(USpringArmComponent* SpringArmComponent, bool Value);
+		static void SetCameraPositionLag(USpringArmComponent* SpringArmComponent, bool Value);
+		static void SetCameraRotationLag(USpringArmComponent* SpringArmComponent, bool Value);
+		static void SetCameraLagSubstepping(USpringArmComponent* SpringArmComponent, bool Value);
+		static void SetInheritPitch(USpringArmComponent* SpringArmComponent, bool Value);
+		static void SetInheritRoll(USpringArmComponent* SpringArmComponent, bool Value);
+		static void SetInheritYaw(USpringArmComponent* SpringArmComponent, bool Value);
+		static void SetCameraLagMaxDistance(USpringArmComponent* SpringArmComponent, float Value);
+		static void SetCameraLagMaxTimeStep(USpringArmComponent* SpringArmComponent, float Value);
+		static void SetCameraPositionLagSpeed(USpringArmComponent* SpringArmComponent, float Value);
+		static void SetCameraRotationLagSpeed(USpringArmComponent* SpringArmComponent, float Value);
+		static void SetProbeChannel(USpringArmComponent* SpringArmComponent, CollisionChannel Value);
+		static void SetProbeSize(USpringArmComponent* SpringArmComponent, float Value);
+		static void SetSocketOffset(USpringArmComponent* SpringArmComponent, const Vector3* Value);
+		static void SetTargetArmLength(USpringArmComponent* SpringArmComponent, float Value);
+		static void SetTargetOffset(USpringArmComponent* SpringArmComponent, const Vector3* Value);
+		static void SetUsePawnControlRotation(USpringArmComponent* SpringArmComponent, bool value);
+	}
+
+	namespace PostProcessComponent {
+		static bool GetEnabled(UPostProcessComponent* PostProcessComponent);
+		static float GetBlendRadius(UPostProcessComponent* PostProcessComponent);
+		static float GetBlendWeight(UPostProcessComponent* PostProcessComponent);
+		static bool GetUnbound(UPostProcessComponent* PostProcessComponent);
+		static float GetPriority(UPostProcessComponent* PostProcessComponent);
+		static void SetEnabled(UPostProcessComponent* PostProcessComponent, bool Value);
+		static void SetBlendRadius(UPostProcessComponent* PostProcessComponent, float Value);
+		static void SetBlendWeight(UPostProcessComponent* PostProcessComponent, float Value);
+		static void SetUnbound(UPostProcessComponent* PostProcessComponent, bool Value);
+		static void SetPriority(UPostProcessComponent* PostProcessComponent, float Priority);
 	}
 
 	namespace PrimitiveComponent {
 		static bool IsGravityEnabled(UPrimitiveComponent* PrimitiveComponent);
 		static bool IsOverlappingComponent(UPrimitiveComponent* PrimitiveComponent, UPrimitiveComponent* Other);
+		static void ForEachOverlappingComponent(UPrimitiveComponent* PrimitiveComponent, UPrimitiveComponent** Array, int32* Elements);
 		static void AddAngularImpulseInDegrees(UPrimitiveComponent* PrimitiveComponent, const Vector3* Impulse, const char* BoneName, bool VelocityChange);
 		static void AddAngularImpulseInRadians(UPrimitiveComponent* PrimitiveComponent, const Vector3* Impulse, const char* BoneName, bool VelocityChange);
 		static void AddForce(UPrimitiveComponent* PrimitiveComponent, const Vector3* Force, const char* BoneName, bool AccelerationChange);
@@ -772,6 +953,8 @@ namespace UnrealCLRFramework {
 		static bool GetCastShadow(UPrimitiveComponent* PrimitiveComponent);
 		static bool GetOnlyOwnerSee(UPrimitiveComponent* PrimitiveComponent);
 		static bool GetOwnerNoSee(UPrimitiveComponent* PrimitiveComponent);
+		static bool GetIgnoreRadialForce(UPrimitiveComponent* PrimitiveComponent);
+		static bool GetIgnoreRadialImpulse(UPrimitiveComponent* PrimitiveComponent);
 		static UMaterialInstanceDynamic* GetMaterial(UPrimitiveComponent* PrimitiveComponent, int32 ElementIndex);
 		static int32 GetMaterialsNumber(UPrimitiveComponent* PrimitiveComponent);
 		static float GetDistanceToCollision(UPrimitiveComponent* PrimitiveComponent, const Vector3* Point, Vector3* ClosestPointOnCollision);
@@ -790,6 +973,8 @@ namespace UnrealCLRFramework {
 		static void SetCastShadow(UPrimitiveComponent* PrimitiveComponent, bool Value);
 		static void SetOnlyOwnerSee(UPrimitiveComponent* PrimitiveComponent, bool Value);
 		static void SetOwnerNoSee(UPrimitiveComponent* PrimitiveComponent, bool Value);
+		static void SetIgnoreRadialForce(UPrimitiveComponent* PrimitiveComponent, bool Value);
+		static void SetIgnoreRadialImpulse(UPrimitiveComponent* PrimitiveComponent, bool Value);
 		static void SetMaterial(UPrimitiveComponent* PrimitiveComponent, int32 ElementIndex, UMaterialInterface* Material);
 		static void SetSimulatePhysics(UPrimitiveComponent* PrimitiveComponent, bool Value);
 		static void SetAngularDamping(UPrimitiveComponent* PrimitiveComponent, float Value);
@@ -847,6 +1032,19 @@ namespace UnrealCLRFramework {
 		static int32 GetMaterialIndex(UMeshComponent* MeshComponent, const char* MaterialSlotName);
 	}
 
+	namespace TextRenderComponent {
+		static void SetFont(UTextRenderComponent* TextRenderComponent, UFont* Value);
+		static void SetText(UTextRenderComponent* TextRenderComponent, const char* Value);
+		static void SetTextMaterial(UTextRenderComponent* TextRenderComponent, UMaterialInterface* Material);
+		static void SetTextRenderColor(UTextRenderComponent* TextRenderComponent, Color Value);
+		static void SetHorizontalAlignment(UTextRenderComponent* TextRenderComponent, HorizontalTextAligment Value);
+		static void SetHorizontalSpacingAdjustment(UTextRenderComponent* TextRenderComponent, float Value);
+		static void SetVerticalAlignment(UTextRenderComponent* TextRenderComponent, VerticalTextAligment Value);
+		static void SetVerticalSpacingAdjustment(UTextRenderComponent* TextRenderComponent, float Value);
+		static void SetScale(UTextRenderComponent* TextRenderComponent, const Vector2* Value);
+		static void SetWorldSize(UTextRenderComponent* TextRenderComponent, float Value);
+	}
+
 	namespace LightComponentBase {
 		static float GetIntensity(ULightComponentBase* LightComponentBase);
 		static bool GetCastShadows(ULightComponentBase* LightComponentBase);
@@ -864,11 +1062,16 @@ namespace UnrealCLRFramework {
 
 	namespace MotionControllerComponent {
 		static bool IsTracked(UMotionControllerComponent* MotionControllerComponent);
+		static bool GetDisplayDeviceModel(UMotionControllerComponent* MotionControllerComponent);
 		static bool GetDisableLowLatencyUpdate(UMotionControllerComponent* MotionControllerComponent);
 		static ControllerHand GetTrackingSource(UMotionControllerComponent* MotionControllerComponent);
+		static void SetDisplayDeviceModel(UMotionControllerComponent* MotionControllerComponent, bool Value);
 		static void SetDisableLowLatencyUpdate(UMotionControllerComponent* MotionControllerComponent, bool Value);
 		static void SetTrackingSource(UMotionControllerComponent* MotionControllerComponent, ControllerHand Value);
 		static void SetTrackingMotionSource(UMotionControllerComponent* MotionControllerComponent, const char* Source);
+		static void SetAssociatedPlayerIndex(UMotionControllerComponent* MotionControllerComponent, int32 PlayerIndex);
+		static void SetCustomDisplayMesh(UMotionControllerComponent* MotionControllerComponent, UStaticMesh* StaticMesh);
+		static void SetDisplayModelSource(UMotionControllerComponent* MotionControllerComponent, const char* Source);
 	}
 
 	namespace StaticMeshComponent {
@@ -880,10 +1083,17 @@ namespace UnrealCLRFramework {
 	namespace InstancedStaticMeshComponent {
 		static int32 GetInstanceCount(UInstancedStaticMeshComponent* InstancedStaticMeshComponent);
 		static bool GetInstanceTransform(UInstancedStaticMeshComponent* InstancedStaticMeshComponent, int32 InstanceIndex, Transform* Value, bool WorldSpace);
-		static int32 AddInstance(UInstancedStaticMeshComponent* InstancedStaticMeshComponent, const Transform* InstanceTransform);
+		static void AddInstance(UInstancedStaticMeshComponent* InstancedStaticMeshComponent, const Transform* InstanceTransform);
+		static void AddInstances(UInstancedStaticMeshComponent* InstancedStaticMeshComponent, int32 EndInstanceIndex, const Transform InstanceTransforms[]);
 		static bool UpdateInstanceTransform(UInstancedStaticMeshComponent* InstancedStaticMeshComponent, int32 InstanceIndex, const Transform* InstanceTransform, bool WorldSpace, bool MarkRenderStateDirty, bool Teleport);
+		static bool BatchUpdateInstanceTransforms(UInstancedStaticMeshComponent* InstancedStaticMeshComponent, int32 StartInstanceIndex, int32 EndInstanceIndex, const Transform InstanceTransforms[], bool WorldSpace, bool MarkRenderStateDirty, bool Teleport);
 		static bool RemoveInstance(UInstancedStaticMeshComponent* InstancedStaticMeshComponent, int32 InstanceIndex);
 		static void ClearInstances(UInstancedStaticMeshComponent* InstancedStaticMeshComponent);
+	}
+
+	namespace HierarchicalInstancedStaticMeshComponent {
+		static bool GetDisableCollision(UHierarchicalInstancedStaticMeshComponent* HierarchicalInstancedStaticMeshComponent);
+		static void SetDisableCollision(UHierarchicalInstancedStaticMeshComponent* HierarchicalInstancedStaticMeshComponent, bool Value);
 	}
 
 	namespace SkinnedMeshComponent {
@@ -903,6 +1113,68 @@ namespace UnrealCLRFramework {
 		static void Play(USkeletalMeshComponent* SkeletalMeshComponent, bool Loop);
 		static void PlayAnimation(USkeletalMeshComponent* SkeletalMeshComponent, UAnimationAsset* Asset, bool Loop);
 		static void Stop(USkeletalMeshComponent* SkeletalMeshComponent);
+	}
+
+	namespace SplineComponent {
+		static bool IsClosedLoop(USplineComponent* SplineComponent);
+		static float GetDuration(USplineComponent* SplineComponent);
+		static SplinePointType GetSplinePointType(USplineComponent* SplineComponent, int32 PointIndex);
+		static int32 GetSplinePointsNumber(USplineComponent* SplineComponent);
+		static int32 GetSplineSegmentsNumber(USplineComponent* SplineComponent);
+		static void GetTangentAtDistanceAlongSpline(USplineComponent* SplineComponent, float Distance, SplineCoordinateSpace CoordinateSpace, Vector3* Value);
+		static void GetTangentAtSplinePoint(USplineComponent* SplineComponent, int32 PointIndex, SplineCoordinateSpace CoordinateSpace, Vector3* Value);
+		static void GetTangentAtTime(USplineComponent* SplineComponent, float Time, SplineCoordinateSpace CoordinateSpace, bool UseConstantVelocity, Vector3* Value);
+		static void GetTransformAtDistanceAlongSpline(USplineComponent* SplineComponent, float Distance, SplineCoordinateSpace CoordinateSpace, Transform* Value);
+		static void GetTransformAtSplinePoint(USplineComponent* SplineComponent, int32 PointIndex, SplineCoordinateSpace CoordinateSpace, bool UseScale, Transform* Value);
+		static void GetArriveTangentAtSplinePoint(USplineComponent* SplineComponent, int32 PointIndex, SplineCoordinateSpace CoordinateSpace, Vector3* Value);
+		static void GetDefaultUpVector(USplineComponent* SplineComponent, SplineCoordinateSpace CoordinateSpace, Vector3* Value);
+		static void GetDirectionAtDistanceAlongSpline(USplineComponent* SplineComponent, float Distance, SplineCoordinateSpace CoordinateSpace, Vector3* Value);
+		static void GetDirectionAtSplinePoint(USplineComponent* SplineComponent, int32 PointIndex, SplineCoordinateSpace CoordinateSpace, Vector3* Value);
+		static void GetDirectionAtTime(USplineComponent* SplineComponent, float Time, SplineCoordinateSpace CoordinateSpace, bool UseConstantVelocity, Vector3* Value);
+		static float GetDistanceAlongSplineAtSplinePoint(USplineComponent* SplineComponent, int32 PointIndex);
+		static void GetLeaveTangentAtSplinePoint(USplineComponent* SplineComponent, int32 PointIndex, SplineCoordinateSpace CoordinateSpace, Vector3* Value);
+		static void GetLocationAndTangentAtSplinePoint(USplineComponent* SplineComponent, int32 PointIndex, SplineCoordinateSpace CoordinateSpace, Vector3* Location, Vector3* Tangent);
+		static void GetLocationAtDistanceAlongSpline(USplineComponent* SplineComponent, float Distance, SplineCoordinateSpace CoordinateSpace, Vector3* Value);
+		static void GetLocationAtSplinePoint(USplineComponent* SplineComponent, int32 PointIndex, SplineCoordinateSpace CoordinateSpace, Vector3* Value);
+		static void GetLocationAtTime(USplineComponent* SplineComponent, float Time, SplineCoordinateSpace CoordinateSpace, Vector3* Value);
+		static void GetRightVectorAtDistanceAlongSpline(USplineComponent* SplineComponent, float Distance, SplineCoordinateSpace CoordinateSpace, Vector3* Value);
+		static void GetRightVectorAtSplinePoint(USplineComponent* SplineComponent, int32 PointIndex, SplineCoordinateSpace CoordinateSpace, Vector3* Value);
+		static void GetRightVectorAtTime(USplineComponent* SplineComponent, float Time, SplineCoordinateSpace CoordinateSpace, bool UseConstantVelocity, Vector3* Value);
+		static float GetRollAtDistanceAlongSpline(USplineComponent* SplineComponent, float Distance, SplineCoordinateSpace CoordinateSpace);
+		static float GetRollAtSplinePoint(USplineComponent* SplineComponent, int32 PointIndex, SplineCoordinateSpace CoordinateSpace);
+		static float GetRollAtTime(USplineComponent* SplineComponent, float Time, SplineCoordinateSpace CoordinateSpace, bool UseConstantVelocity);
+		static void GetRotationAtDistanceAlongSpline(USplineComponent* SplineComponent, float Distance, SplineCoordinateSpace CoordinateSpace, Quaternion* Value);
+		static void GetRotationAtSplinePoint(USplineComponent* SplineComponent, int32 PointIndex, SplineCoordinateSpace CoordinateSpace, Quaternion* Value);
+		static void GetRotationAtTime(USplineComponent* SplineComponent, float Time, SplineCoordinateSpace CoordinateSpace, bool UseConstantVelocity, Quaternion* Value);
+		static void GetScaleAtDistanceAlongSpline(USplineComponent* SplineComponent, float Distance, Vector3* Value);
+		static void GetScaleAtSplinePoint(USplineComponent* SplineComponent, int32 PointIndex, Vector3* Value);
+		static void GetScaleAtTime(USplineComponent* SplineComponent, float Time, bool UseConstantVelocity, Vector3* Value);
+		static float GetSplineLength(USplineComponent* SplineComponent);
+		static void GetTransformAtTime(USplineComponent* SplineComponent, float Time, SplineCoordinateSpace CoordinateSpace, bool UseConstantVelocity, bool UseScale, Transform* Value);
+		static void GetUpVectorAtDistanceAlongSpline(USplineComponent* SplineComponent, float Distance, SplineCoordinateSpace CoordinateSpace, Vector3* Value);
+		static void GetUpVectorAtSplinePoint(USplineComponent* SplineComponent, int32 PointIndex, SplineCoordinateSpace CoordinateSpace, Vector3* Value);
+		static void GetUpVectorAtTime(USplineComponent* SplineComponent, float Time, SplineCoordinateSpace CoordinateSpace, bool UseConstantVelocity, Vector3* Value);
+		static void SetDuration(USplineComponent* SplineComponent, float Value);
+		static void SetSplinePointType(USplineComponent* SplineComponent, int32 PointIndex, SplinePointType Type, bool UpdateSpline);
+		static void SetClosedLoop(USplineComponent* SplineComponent, bool Value, bool UpdateSpline);
+		static void SetDefaultUpVector(USplineComponent* SplineComponent, const Vector3* Value, SplineCoordinateSpace CoordinateSpace);
+		static void SetLocationAtSplinePoint(USplineComponent* SplineComponent, int32 PointIndex, const Vector3* Value, SplineCoordinateSpace CoordinateSpace, bool UpdateSpline);
+		static void SetTangentAtSplinePoint(USplineComponent* SplineComponent, int32 PointIndex, const Vector3* Tangent, SplineCoordinateSpace CoordinateSpace, bool UpdateSpline);
+		static void SetTangentsAtSplinePoint(USplineComponent* SplineComponent, int32 PointIndex, const Vector3* ArriveTangent, const Vector3* LeaveTangent, SplineCoordinateSpace CoordinateSpace, bool UpdateSpline);
+		static void SetUpVectorAtSplinePoint(USplineComponent* SplineComponent, int32 PointIndex, const Vector3* UpVector, SplineCoordinateSpace CoordinateSpace, bool UpdateSpline);
+		static void AddSplinePoint(USplineComponent* SplineComponent, const Vector3* Location, SplineCoordinateSpace CoordinateSpace, bool UpdateSpline);
+		static void AddSplinePointAtIndex(USplineComponent* SplineComponent, const Vector3* Location, int32 PointIndex, SplineCoordinateSpace CoordinateSpace, bool UpdateSpline);
+		static void ClearSplinePoints(USplineComponent* SplineComponent, bool UpdateSpline);
+		static void FindDirectionClosestToWorldLocation(USplineComponent* SplineComponent, const Vector3* Location, SplineCoordinateSpace CoordinateSpace, Vector3* Value);
+		static void FindLocationClosestToWorldLocation(USplineComponent* SplineComponent, const Vector3* Location, SplineCoordinateSpace CoordinateSpace, Vector3* Value);
+		static void FindUpVectorClosestToWorldLocation(USplineComponent* SplineComponent, const Vector3* Location, SplineCoordinateSpace CoordinateSpace, Vector3* Value);
+		static void FindRightVectorClosestToWorldLocation(USplineComponent* SplineComponent, const Vector3* Location, SplineCoordinateSpace CoordinateSpace, Vector3* Value);
+		static float FindRollClosestToWorldLocation(USplineComponent* SplineComponent, const Vector3* Location, SplineCoordinateSpace CoordinateSpace);
+		static void FindScaleClosestToWorldLocation(USplineComponent* SplineComponent, const Vector3* Location, Vector3* Value);
+		static void FindTangentClosestToWorldLocation(USplineComponent* SplineComponent, const Vector3* Location, SplineCoordinateSpace CoordinateSpace, Vector3* Value);
+		static void FindTransformClosestToWorldLocation(USplineComponent* SplineComponent, const Vector3* Location, SplineCoordinateSpace CoordinateSpace, bool UseScale, Transform* Value);
+		static void RemoveSplinePoint(USplineComponent* SplineComponent, int32 PointIndex, bool UpdateSpline);
+		static void UpdateSpline(USplineComponent* SplineComponent);
 	}
 
 	namespace RadialForceComponent {
@@ -932,6 +1204,7 @@ namespace UnrealCLRFramework {
 
 	namespace MaterialInstance {
 		static bool IsChildOf(UMaterialInstance* MaterialInstance, UMaterialInterface* Material);
+		static UMaterialInstanceDynamic* GetParent(UMaterialInstance* MaterialInstance);
 	}
 
 	namespace MaterialInstanceDynamic {

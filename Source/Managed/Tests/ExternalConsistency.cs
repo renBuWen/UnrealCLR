@@ -5,8 +5,9 @@ using System.Reflection;
 using UnrealEngine.Framework;
 
 namespace UnrealEngine.Tests {
-	public static class ExternalConsistency {
-		public static void OnBeginPlay() {
+	public class ExternalConsistency : ISystem {
+		public void OnBeginPlay() {
+			AssetRegistryTest();
 			CommandLineArgumentsTest();
 			ReferencesEqualityTest();
 			NamingTest();
@@ -22,7 +23,36 @@ namespace UnrealEngine.Tests {
 			Debug.AddOnScreenMessage(-1, 10.0f, Color.MediumTurquoise, "Verify " + MethodBase.GetCurrentMethod().DeclaringType + " results in output log!");
 		}
 
-		private static void CommandLineArgumentsTest() {
+		private void AssetRegistryTest() {
+			Debug.Log(LogLevel.Display, "Starting " + MethodBase.GetCurrentMethod().Name + "...");
+
+			AssetRegistry assetRegistry = new();
+
+			if (!assetRegistry.HasAssets("/Game/Tests", true)) {
+				Debug.Log(LogLevel.Error, "Asset registry assets path test failed!");
+
+				return;
+			}
+
+			bool assetFound = false;
+
+			Action<Asset> OnAsset = (asset) => {
+				if (asset.Path == "/Game/Tests/Tests")
+					assetFound = true;
+			};
+
+			assetRegistry.ForEachAsset(OnAsset, "/Game/Tests", true);
+
+			if (!assetFound) {
+				Debug.Log(LogLevel.Error, "Asset registry path to asset test failed!");
+
+				return;
+			}
+
+			Debug.Log(LogLevel.Display, "Test passed successfully");
+		}
+
+		private void CommandLineArgumentsTest() {
 			Debug.Log(LogLevel.Display, "Starting " + MethodBase.GetCurrentMethod().Name + "...");
 
 			string append = " -test 1";
@@ -76,13 +106,13 @@ namespace UnrealEngine.Tests {
 			Debug.Log(LogLevel.Display, "Test passed successfully");
 		}
 
-		private static void ReferencesEqualityTest() {
+		private void ReferencesEqualityTest() {
 			Debug.Log(LogLevel.Display, "Starting " + MethodBase.GetCurrentMethod().Name + "...");
 
-			TriggerBox actorLeft = new TriggerBox();
-			TriggerSphere actorRight = new TriggerSphere();
-			SceneComponent sceneComponentLeft = new SceneComponent(actorLeft);
-			SceneComponent sceneComponentRight = new SceneComponent(actorRight);
+			TriggerBox actorLeft = new();
+			TriggerSphere actorRight = new();
+			SceneComponent sceneComponentLeft = new(actorLeft);
+			SceneComponent sceneComponentRight = new(actorRight);
 
 			if (sceneComponentLeft.Equals(sceneComponentRight) || !sceneComponentLeft.Equals(sceneComponentLeft)) {
 				Debug.Log(LogLevel.Error, "Scene components equality check failed!");
@@ -137,7 +167,7 @@ namespace UnrealEngine.Tests {
 			Debug.Log(LogLevel.Display, "Test passed successfully");
 		}
 
-		private static void NamingTest() {
+		private void NamingTest() {
 			Debug.Log(LogLevel.Display, "Starting " + MethodBase.GetCurrentMethod().Name + "...");
 
 			const string actorName = "TestActorName";
@@ -146,8 +176,8 @@ namespace UnrealEngine.Tests {
 			const string componentShortName = "TestComponent";
 			const string renamedSuffix = "Renamed";
 
-			Actor actor = new Actor(actorName);
-			SceneComponent sceneComponent = new SceneComponent(actor, componentName);
+			Actor actor = new(actorName);
+			SceneComponent sceneComponent = new(actor, componentName);
 
 			if (actor.Name != actorName || sceneComponent.Name != componentName) {
 				Debug.Log(LogLevel.Error, "Names check failed!");
@@ -184,13 +214,13 @@ namespace UnrealEngine.Tests {
 			Debug.Log(LogLevel.Display, "Test passed successfully");
 		}
 
-		private static void HashCodesTest() {
+		private void HashCodesTest() {
 			Debug.Log(LogLevel.Display, "Starting " + MethodBase.GetCurrentMethod().Name + "...");
 
-			Actor actorLeft = new Actor();
-			Actor actorRight = new Actor();
-			SceneComponent sceneComponentLeft = new SceneComponent(actorLeft);
-			SceneComponent sceneComponentRight = new SceneComponent(actorRight);
+			Actor actorLeft = new();
+			Actor actorRight = new();
+			SceneComponent sceneComponentLeft = new(actorLeft);
+			SceneComponent sceneComponentRight = new(actorRight);
 
 			if (sceneComponentLeft.GetHashCode() == sceneComponentRight.GetHashCode() || sceneComponentLeft.GetHashCode() != sceneComponentLeft.GetHashCode()) {
 				Debug.Log(LogLevel.Error, "Scene components hash codes check failed!");
@@ -223,12 +253,12 @@ namespace UnrealEngine.Tests {
 			Debug.Log(LogLevel.Display, "Test passed successfully");
 		}
 
-		private static void ActorsHierarchyTest() {
+		private void ActorsHierarchyTest() {
 			Debug.Log(LogLevel.Display, "Starting " + MethodBase.GetCurrentMethod().Name + "...");
 
 			const string actorName = "TestPlayerController";
 
-			PlayerController playerController = new PlayerController(actorName);
+			PlayerController playerController = new(actorName);
 			Actor actor = World.GetActor<Actor>(actorName);
 
 			if (playerController == null || actor == null) {
@@ -249,12 +279,20 @@ namespace UnrealEngine.Tests {
 			Debug.Log(LogLevel.Display, "Test passed successfully");
 		}
 
-		private static void ChildActorsTest() {
+		private void ChildActorsTest() {
 			Debug.Log(LogLevel.Display, "Starting " + MethodBase.GetCurrentMethod().Name + "...");
 
-			Actor actor = new Actor();
-			ChildActorComponent childActorComponent = new ChildActorComponent(actor, setAsRoot: true);
+			Actor actor = new();
+			ChildActorComponent childActorComponent = new(actor, setAsRoot: true);
 			TriggerBox childActor = childActorComponent.SetChildActor<TriggerBox>();
+
+			if (childActor == null) {
+				Debug.Log(LogLevel.Error, "Child actor creation check failed!");
+
+				return;
+			}
+
+			childActor = childActorComponent.GetChildActor<TriggerBox>();
 
 			if (childActor == null) {
 				Debug.Log(LogLevel.Error, "Child actor obtainment check failed!");
@@ -263,7 +301,7 @@ namespace UnrealEngine.Tests {
 			}
 
 			BoxComponent boxComponent = childActor.GetComponent<BoxComponent>();
-			Vector3 initialExtent = new Vector3(100.0f, 100.0f, 100.0f);
+			Vector3 initialExtent = new(100.0f, 100.0f, 100.0f);
 
 			boxComponent.InitBoxExtent(initialExtent);
 
@@ -273,16 +311,42 @@ namespace UnrealEngine.Tests {
 				return;
 			}
 
+			int attachedActorCount = 0;
+
+			Action<Actor> OnAttachedActor = (actor) => attachedActorCount++;
+
+			actor.ForEachAttachedActor(OnAttachedActor);
+
+			if (attachedActorCount != 1) {
+				Debug.Log(LogLevel.Error, "Batched attached actor check failed!");
+
+				return;
+			}
+
+			int childActorCount = 0;
+
+			Action<Actor> OnChildActor = (actor) => childActorCount++;
+
+			actor.ForEachChildActor(OnChildActor);
+
+			if (childActorCount != 1) {
+				Debug.Log(LogLevel.Error, "Batched child actor check failed!");
+
+				return;
+			}
+
 			Debug.Log(LogLevel.Display, "Test passed successfully");
 		}
 
-		private static void ComponentsAttachmentTest() {
+		private void ComponentsAttachmentTest() {
 			Debug.Log(LogLevel.Display, "Starting " + MethodBase.GetCurrentMethod().Name + "...");
 
-			Actor actor = new Actor();
-			StaticMeshComponent staticMeshComponent = new StaticMeshComponent(actor, setAsRoot: true);
-			InstancedStaticMeshComponent instancedStaticMeshComponent = new InstancedStaticMeshComponent(actor);
-			SceneComponent sceneComponent = new SceneComponent(actor);
+			Actor actor = new();
+			StaticMeshComponent staticMeshComponent = new(actor, setAsRoot: true);
+			InstancedStaticMeshComponent instancedStaticMeshComponent = new(actor);
+			SceneComponent sceneComponent = new(actor);
+			BoxComponent boxComponent = new(actor);
+			SphereComponent sphereComponent = new(actor);
 
 			sceneComponent.AttachToComponent(instancedStaticMeshComponent, AttachmentTransformRule.KeepRelativeTransform);
 
@@ -298,14 +362,38 @@ namespace UnrealEngine.Tests {
 				return;
 			}
 
+			int componentCount = 0;
+
+			Action<SceneComponent> OnComponent = (component) => componentCount++;
+
+			actor.ForEachComponent(OnComponent);
+
+			if (componentCount != 5) {
+				Debug.Log(LogLevel.Error, "Batched component check failed!");
+
+				return;
+			}
+
+			int attachedChildCount = 0;
+
+			Action<SceneComponent> OnAttachedChild = (component) => attachedChildCount++;
+
+			staticMeshComponent.ForEachAttachedChild(OnAttachedChild);
+
+			if (attachedChildCount != 3) {
+				Debug.Log(LogLevel.Error, "Batched component child attachment check failed!");
+
+				return;
+			}
+
 			Debug.Log(LogLevel.Display, "Test passed successfully");
 		}
 
-		private static void ComponentsMatchingTest() {
+		private void ComponentsMatchingTest() {
 			Debug.Log(LogLevel.Display, "Starting " + MethodBase.GetCurrentMethod().Name + "...");
 
-			Actor actor = new Actor();
-			StaticMeshComponent staticMeshComponent = new StaticMeshComponent(actor, setAsRoot: true);
+			Actor actor = new();
+			StaticMeshComponent staticMeshComponent = new(actor, setAsRoot: true);
 			SceneComponent sceneComponent = actor.GetRootComponent<SceneComponent>();
 			InstancedStaticMeshComponent instancedStaticMeshComponent = actor.GetRootComponent<InstancedStaticMeshComponent>();
 
@@ -336,11 +424,11 @@ namespace UnrealEngine.Tests {
 			Debug.Log(LogLevel.Display, "Test passed successfully");
 		}
 
-		private static void ObjectIDsTest() {
+		private void ObjectIDsTest() {
 			Debug.Log(LogLevel.Display, "Starting " + MethodBase.GetCurrentMethod().Name + "...");
 
-			Actor actor = new Actor();
-			SceneComponent sceneComponent = new SceneComponent(actor, setAsRoot: true);
+			Actor actor = new();
+			SceneComponent sceneComponent = new(actor, setAsRoot: true);
 
 			Actor actorByID = World.GetActorByID<Actor>(actor.ID);
 
@@ -361,7 +449,7 @@ namespace UnrealEngine.Tests {
 			Debug.Log(LogLevel.Display, "Test passed successfully");
 		}
 
-		private static void MaxFramesPerSecondTest() {
+		private void MaxFramesPerSecondTest() {
 			Debug.Log(LogLevel.Display, "Starting " + MethodBase.GetCurrentMethod().Name + "...");
 
 			float currentMaxFPS = Engine.MaxFPS;
@@ -382,11 +470,11 @@ namespace UnrealEngine.Tests {
 			Debug.Log(LogLevel.Display, "Test passed successfully");
 		}
 
-		private static void TagsTest() {
+		private void TagsTest() {
 			Debug.Log(LogLevel.Display, "Starting " + MethodBase.GetCurrentMethod().Name + "...");
 
-			Actor actor = new Actor();
-			SceneComponent sceneComponent = new SceneComponent(actor);
+			Actor actor = new();
+			SceneComponent sceneComponent = new(actor);
 
 			const string tag = "TestTag";
 

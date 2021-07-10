@@ -5,6 +5,7 @@
     + [Blueprint functions](#blueprint-functions)
   * [Packaging](#packaging)
 - [Engine](#engine)
+  * [World events](#world-events)
   * [Code structure](#code-structure)
   * [Blueprints](#blueprints)
   * [Data passing](#data-passing)
@@ -13,12 +14,31 @@
 Getting started
 --------
 ### Development
-UnrealCLR not tied to how organized the development environment. Any IDE such as [Visual Studio](https://visualstudio.microsoft.com), [Visual Code](https://code.visualstudio.com), or [Rider](https://www.jetbrains.com/rider/), can be used to manage a project. A programmer has full freedom to set up the building pipeline in any desirable way just as for a regular .NET library.
+UnrealCLR doesn't depend on how the development environment is organized. Any IDE such as [Visual Studio](https://visualstudio.microsoft.com), [Visual Code](https://code.visualstudio.com), or [Rider](https://www.jetbrains.com/rider/), can be used to manage a project. The programmer has full freedom to set up the building pipeline in any desirable way just as for a regular .NET library.
 
 ### Project
-After [building and installing](https://github.com/nxrighthere/UnrealCLR#building) the plugin, use IDE or [CLI tool](https://docs.microsoft.com/en-us/dotnet/core/tools/dotnet-new) to create a [.NET class library](https://docs.microsoft.com/en-us/dotnet/core/tools/dotnet-new#classlib) project which targets .NET Core in any preferable location. Don't store source code in `%Project%/Managed` folder of the engine's project, it's used exclusively for loading and packaging user assemblies by the plugin.
+After [building and installing](https://github.com/nxrighthere/UnrealCLR#building) the plugin, use IDE or [CLI tool](https://docs.microsoft.com/en-us/dotnet/core/tools/dotnet-new) to create a [.NET class library](https://docs.microsoft.com/en-us/dotnet/core/tools/dotnet-new#classlib) project which targets `net5.0` in any preferable location. Don't store source code in `%Project%/Managed` folder of the engine's project, it's used exclusively for loading and packaging user assemblies by the plugin.
 
-Add a reference to `UnrealEngine.Framework.dll` assembly located in `Source/Managed/Framework/bin/Release` folder. Create a new or open a source code file in the .NET project and replace its content with the following code:
+Add a reference to `UnrealEngine.Framework.dll` assembly located in `Source/Managed/Framework/bin/Release` folder.
+
+Assuming you put your code in `%Project%/MyDotNetCode`, your project file should look similar to this:
+```xml
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net5.0</TargetFramework>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <OutputPath>../Managed/Build</OutputPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="UnrealEngine.Framework">
+      <HintPath>%UnrealCLR%/Source/Managed/Framework/bin/Release/UnrealEngine.Framework.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+</Project>
+```
+
+Create a new or open a source code file in the .NET project and replace its content with the following code:
 
 #### Entry point
 
@@ -31,8 +51,10 @@ using System.Drawing;
 using UnrealEngine.Framework;
 
 namespace Game {
-	public static class Main { // Indicates the main entry point for automatic loading by the plugin
+	public class Main { // Indicates the main entry point for automatic loading by the plugin
 		public static void OnWorldBegin() => Debug.AddOnScreenMessage(-1, 10.0f, Color.DeepPink, "Hello, Unreal Engine!");
+
+		public static void OnWorldPostBegin() => Debug.AddOnScreenMessage(-1, 10.0f, Color.DeepPink, "How's it going?");
 
 		public static void OnWorldEnd() => Debug.AddOnScreenMessage(-1, 10.0f, Color.DeepPink, "See you soon, Unreal Engine!");
 
@@ -61,6 +83,8 @@ open UnrealEngine.Framework
 module Main = // Indicates the main entry point for automatic loading by the plugin
     let OnWorldBegin() = Debug.AddOnScreenMessage(-1, 10.0f, Color.DeepPink, "Hello, Unreal Engine!")
 
+    let OnWorldPostBegin() = Debug.AddOnScreenMessage(-1, 10.0f, Color.DeepPink, "How's it going?")
+
     let OnWorldEnd() = Debug.AddOnScreenMessage(-1, 10.0f, Color.DeepPink, "See you soon, Unreal Engine!")
 
     let OnWorldPrePhysicsTick(deltaTime:float32) = Debug.AddOnScreenMessage(1, 10.0f, Color.DeepPink, "On pre physics tick invoked!")
@@ -75,11 +99,11 @@ module Main = // Indicates the main entry point for automatic loading by the plu
 
 All functions of the main entry point are optional, and it's not necessary to implement them for every [tick group](https://docs.unrealengine.com/en-US/Programming/UnrealArchitecture/Actors/Ticking/index.html).
 
-Build a .NET assembly to `%Project%/Managed` folder of the engine's project, and make sure that no other assemblies of other .NET projects are stored there.
+[Publish](https://docs.microsoft.com/en-us/dotnet/core/tools/dotnet-publish) a .NET assembly to `%Project%/Managed` folder of the engine's project, and make sure that no other assemblies of other .NET projects are stored there.
 
 Assemblies that no longer referenced and unused in the project will persist in `%Project%/Managed` folder. Consider maintaining this folder through IDE or automation scripts.
 
-Enter the [play mode](https://docs.unrealengine.com/en-US/Engine/UI/LevelEditor/InEditorTesting/index.html) to execute managed code.
+Enter the [play mode](https://docs.unrealengine.com/en-US/Basics/HowTo/PIE/index.html) to execute managed code. Stop the play mode to unload assemblies from memory for further recompilation.
 
 #### Blueprint functions
 
@@ -92,7 +116,7 @@ using System.Drawing;
 using UnrealEngine.Framework;
 
 namespace Game {
-	public static class System { // Custom class for loading functions from blueprints
+	public class System { // Custom class for loading functions from blueprints
 		public static void Function() => Debug.AddOnScreenMessage(-1, 10.0f, Color.DeepPink, "Blueprint function invoked!");
 	}
 }
@@ -114,7 +138,7 @@ module System = // Custom module for loading functions from blueprints
 ```
 </details>
 
-To run a blueprint function, create a new or open an existing [level](https://docs.unrealengine.com/en-US/Engine/QuickStart/index.html#3.createanewlevel) of the engine. Open level blueprint by navigating to `Blueprints -> Open Level Blueprint` and create a basic execution flow:
+To run a blueprint function, create a new or open an existing [level](https://docs.unrealengine.com/en-US/Engine/QuickStart/index.html#3.createanewlevel) of the engine. Open level blueprint by navigating to `Blueprints -> Open Level Blueprint` and create a basic execution flow by right-clicking on the graph and selecting nodes from the .NET category:
 
 <p align="left">
 	<img src="https://github.com/Rageware/Images/raw/master/UnrealCLR/level-graph.png" alt="graph">
@@ -127,8 +151,25 @@ The plugin is transparently integrated into the [packaging](https://docs.unreale
 
 Engine
 --------
+### World events
+The framework provides world events that are executed by the engine in a predetermined order to drive logic and simulation. Event functions are automatically loaded by the plugin from `Main` class for further execution.
+
+`OnWorldBegin()` Called after the world is initialized before the level script.
+
+`OnWorldPostBegin()` Called after the level script when default actors are spawned.
+
+`OnWorldEnd()` Called before deinitialization of the world after the level script.
+
+`OnWorldPrePhysicsTick(float deltaTime)` Called at the beginning of the frame.
+
+`OnWorldDuringPhysicsTick(float deltaTime)` Called when physics simulation has begun.
+
+`OnWorldPostPhysicsTick(float deltaTime)` Called when physics simulation is complete.
+
+`OnWorldPostUpdateTick(float deltaTime)` Called after cameras are updated.
+
 ### Code structure
-The plugin allows organizing the code structure of the project in any preferable way. Any paradigms or patterns can be used to drive the logic and simulation without any intermediate management between user code and the engine.
+The plugin allows organizing the code structure of the project in any preferable way. Any paradigms or patterns can be used to drive logic and simulation without any intermediate management between user code and the engine.
 
 **Object-Oriented Design**
 
@@ -138,7 +179,7 @@ using System.Drawing;
 using UnrealEngine.Framework;
 
 namespace Game {
-	public static class Main {
+	public class Main {
 		private static Entity[] entities = new Entity[32];
 
 		public static void OnWorldBegin() {
@@ -178,7 +219,7 @@ using System.Drawing;
 using UnrealEngine.Framework;
 
 namespace Game {
-	public static class Main {
+	public class Main {
 		private static Actor[] entities = new Actor[32];
 		private static bool[] canTick = new bool[entities.Length];
 
@@ -205,6 +246,8 @@ namespace Game {
 }
 ```
 
+See [tests project](https://github.com/nxrighthere/UnrealCLR/tree/master/Source/Managed/Tests) for a basic implementation of various systems.
+
 ### Blueprints
 The plugin provides two blueprints to manage the execution. They can be used in any combinations with other nodes, data types, and C++ code to weave managed functionality with events. It's highly recommended to use creative approaches that extract information from blueprint classes instead of using plain strings for managed functions.
 
@@ -214,10 +257,26 @@ Attempts to find a managed function from loaded assemblies. This node performs a
 
 **Execute Managed Function**
 
-Attempts to execute a managed function. This node performs a fast execution of a function pointer. Optionally allows passing an [object reference](https://github.com/nxrighthere/UnrealCLR/blob/master/API/ObjectReference.md) of the engine to managed code with conversion to an appropriate type.
+Attempts to execute a managed function. This node performs a fast execution of a function pointer. Optionally allows passing an [object reference](https://github.com/nxrighthere/UnrealCLR/blob/master/API/ObjectReference.md) of the engine to managed code with further conversion to an appropriate type.
 
 ### Data passing
-Two options are available to pass data between the managed runtime and the engine.
+Several options are available to pass data between the managed runtime and the engine.
+
+**Commands, functions, and events**
+
+The engine's reflection system allows to dynamically invoke commands, functions, and events of engine classes from managed code to pass data on-demand through custom arguments.
+
+Blueprint event dispatcher:
+
+<p align="left">
+	<img src="https://github.com/Rageware/Images/raw/master/UnrealCLR/event-dispatcher.png" alt="event-dispatcher">
+</p>
+
+```csharp
+blueprint.Invoke($"TestEvent \"{ message }\" { value }");
+```
+
+See [Actor.Invoke()](https://github.com/nxrighthere/UnrealCLR/blob/master/API/Actor-Invoke(string).md), [ActorComponent.Invoke()](https://github.com/nxrighthere/UnrealCLR/blob/master/API/ActorComponent-Invoke(string).md), and [AnimationInstance.Invoke()](https://github.com/nxrighthere/UnrealCLR/blob/master/API/AnimationInstance-Invoke(string).md) methods.
 
 **Blueprint variables**
 

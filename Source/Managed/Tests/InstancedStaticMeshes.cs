@@ -1,22 +1,28 @@
 using System;
 using System.Drawing;
 using System.Numerics;
-using System.Reflection;
 using UnrealEngine.Framework;
 
 namespace UnrealEngine.Tests {
-	public static class InstancedStaticMeshes {
+	public class InstancedStaticMeshes : ISystem {
+		private Actor actor;
+		private SceneComponent sceneComponent;
+		private Transform[] transforms;
+		private InstancedStaticMeshComponent instancedStaticMeshComponent;
+		private Material material;
+		private float rotationSpeed;
 		private const int maxCubes = 200;
-		private static Actor actor = new Actor("InstancedCubes");
-		private static SceneComponent sceneComponent = new SceneComponent(actor);
-		private static Transform[] transforms = new Transform[maxCubes];
-		private static InstancedStaticMeshComponent instancedStaticMeshComponent = new InstancedStaticMeshComponent(actor, setAsRoot: true);
-		private static Material material = Material.Load("/Game/Tests/BasicMaterial");
-		private static float rotationSpeed = 2.5f;
 
-		public static void OnBeginPlay() {
-			Debug.AddOnScreenMessage(-1, 3.0f, Color.LightGreen, MethodBase.GetCurrentMethod().DeclaringType + " system started!");
+		public InstancedStaticMeshes() {
+			actor = new("InstancedCubes");
+			sceneComponent = new(actor);
+			transforms = new Transform[maxCubes];
+			instancedStaticMeshComponent = new(actor, setAsRoot: true);
+			material = Material.Load("/Game/Tests/BasicMaterial");
+			rotationSpeed = 2.5f;
+		}
 
+		public void OnBeginPlay() {
 			World.GetFirstPlayerController().SetViewTarget(World.GetActor<Camera>("MainCamera"));
 
 			instancedStaticMeshComponent.SetStaticMesh(StaticMesh.Cube);
@@ -24,31 +30,31 @@ namespace UnrealEngine.Tests {
 			instancedStaticMeshComponent.CreateAndSetMaterialInstanceDynamic(0).SetVectorParameterValue("Color", LinearColor.White);
 
 			for (int i = 0; i < maxCubes; i++) {
-				sceneComponent.SetRelativeLocation(new Vector3(150.0f * i, 50.0f * i, 100.0f * i));
+				sceneComponent.SetRelativeLocation(new(150.0f * i, 50.0f * i, 100.0f * i));
 				sceneComponent.SetRelativeRotation(Maths.CreateFromYawPitchRoll(5.0f * i, 0.0f, 0.0f));
-				sceneComponent.AddLocalOffset(new Vector3(15.0f * i, 20.0f * i, 25.0f * i));
+				sceneComponent.AddLocalOffset(new(15.0f * i, 20.0f * i, 25.0f * i));
 				sceneComponent.GetTransform(ref transforms[i]);
-				instancedStaticMeshComponent.AddInstance(transforms[i]);
 			}
+
+			instancedStaticMeshComponent.AddInstances(transforms);
 
 			Debug.AddOnScreenMessage(-1, 3.0f, Color.LightGreen, "Instances are created! Number of instances: " + instancedStaticMeshComponent.InstanceCount);
 		}
 
-		public static void OnEndPlay() => Debug.ClearOnScreenMessages();
-
-		public static void OnTick() {
+		public void OnTick(float deltaTime) {
 			Debug.AddOnScreenMessage(1, 1.0f, Color.SkyBlue, "Frame number: " + Engine.FrameNumber);
 
-			float deltaTime = World.DeltaTime;
 			Quaternion deltaRotation = Maths.CreateFromYawPitchRoll(rotationSpeed * deltaTime, rotationSpeed * deltaTime, rotationSpeed * deltaTime);
 
 			for (int i = 0; i < maxCubes; i++) {
 				sceneComponent.SetWorldTransform(transforms[i]);
 				sceneComponent.AddLocalRotation(deltaRotation);
 				sceneComponent.GetTransform(ref transforms[i]);
-
-				instancedStaticMeshComponent.UpdateInstanceTransform(i, transforms[i], markRenderStateDirty: i == maxCubes - 1);
 			}
+
+			instancedStaticMeshComponent.BatchUpdateInstanceTransforms(0, transforms, markRenderStateDirty: true);
 		}
+
+		public void OnEndPlay() => Debug.ClearOnScreenMessages();
 	}
 }

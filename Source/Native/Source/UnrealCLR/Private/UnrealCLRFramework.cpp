@@ -1,20 +1,28 @@
 /*
- * Copyright (c) 2020 Stanislav Denisov (nxrighthere@gmail.com)
+ *  Unreal Engine .NET 5 integration 
+ *  Copyright (c) 2021 Stanislav Denisov
  *
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the GNU Lesser General Public License
- * (LGPL) version 3 with a static linking exception which accompanies this
- * distribution.
+ *  Permission is hereby granted, free of charge, to any person obtaining a copy
+ *  of this software and associated documentation files (the "Software"), to deal
+ *  in the Software without restriction, including without limitation the rights
+ *  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ *  copies of the Software, and to permit persons to whom the Software is
+ *  furnished to do so, subject to the following conditions:
  *
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
+ *  The above copyright notice and this permission notice shall be included in all
+ *  copies or substantial portions of the Software.
+ *
+ *  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ *  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ *  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ *  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ *  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ *  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ *  SOFTWARE.
  */
 
 #include "UnrealCLRFramework.h"
 
-DEFINE_LOG_CATEGORY(LogUnrealAssert);
 DEFINE_LOG_CATEGORY(LogUnrealManaged);
 
 namespace UnrealCLRFramework {
@@ -106,6 +114,9 @@ namespace UnrealCLRFramework {
 			case ActorType::LevelScript:\
 				Result = Head ALevelScriptActor Tail;\
 				break;\
+			case ActorType::GameModeBase:\
+				Result = Head AGameModeBase Tail;\
+				break;\
 			default:\
 				break;\
 		}\
@@ -143,8 +154,17 @@ namespace UnrealCLRFramework {
 			case ComponentType::InstancedStaticMesh:\
 				Result = Head UInstancedStaticMeshComponent Tail;\
 				break;\
+			case ComponentType::HierarchicalInstancedStaticMesh:\
+				Result = Head UHierarchicalInstancedStaticMeshComponent Tail;\
+				break;\
 			case ComponentType::ChildActor:\
 				Result = Head UChildActorComponent Tail;\
+				break;\
+			case ComponentType::SpringArm:\
+				Result = Head USpringArmComponent Tail;\
+				break;\
+			case ComponentType::PostProcess:\
+				Result = Head UPostProcessComponent Tail;\
 				break;\
 			case ComponentType::Box:\
 				Result = Head UBoxComponent Tail;\
@@ -157,6 +177,12 @@ namespace UnrealCLRFramework {
 				break;\
 			case ComponentType::SkeletalMesh:\
 				Result = Head USkeletalMeshComponent Tail;\
+				break;\
+			case ComponentType::TextRender:\
+				Result = Head UTextRenderComponent Tail;\
+				break;\
+			case ComponentType::Spline:\
+				Result = Head USplineComponent Tail;\
 				break;\
 			case ComponentType::RadialForce:\
 				Result = Head URadialForceComponent Tail;\
@@ -192,8 +218,17 @@ namespace UnrealCLRFramework {
 			case ComponentType::InstancedStaticMesh:\
 				Result = Head UInstancedStaticMeshComponent Tail;\
 				break;\
+			case ComponentType::HierarchicalInstancedStaticMesh:\
+				Result = Head UHierarchicalInstancedStaticMeshComponent Tail;\
+				break;\
 			case ComponentType::ChildActor:\
 				Result = Head UChildActorComponent Tail;\
+				break;\
+			case ComponentType::SpringArm:\
+				Result = Head USpringArmComponent Tail;\
+				break;\
+			case ComponentType::PostProcess:\
+				Result = Head UPostProcessComponent Tail;\
 				break;\
 			case ComponentType::Box:\
 				Result = Head UBoxComponent Tail;\
@@ -206,6 +241,12 @@ namespace UnrealCLRFramework {
 				break;\
 			case ComponentType::SkeletalMesh:\
 				Result = Head USkeletalMeshComponent Tail;\
+				break;\
+			case ComponentType::TextRender:\
+				Result = Head UTextRenderComponent Tail;\
+				break;\
+			case ComponentType::Spline:\
+				Result = Head USplineComponent Tail;\
 				break;\
 			case ComponentType::RadialForce:\
 				Result = Head URadialForceComponent Tail;\
@@ -271,6 +312,22 @@ namespace UnrealCLRFramework {
 				if (Condition Actor->OnActorHit.IsAlreadyBound(UnrealCLR::Engine::Manager, &UUnrealCLRManager::ActorHit))\
 					Actor->OnActorHit. Method (UnrealCLR::Engine::Manager, &UUnrealCLRManager::ActorHit);\
 				break;\
+			case ActorEventType::OnActorBeginCursorOver:\
+				if (Condition Actor->OnBeginCursorOver.IsAlreadyBound(UnrealCLR::Engine::Manager, &UUnrealCLRManager::ActorBeginCursorOver))\
+					Actor->OnBeginCursorOver. Method (UnrealCLR::Engine::Manager, &UUnrealCLRManager::ActorBeginCursorOver);\
+				break;\
+			case ActorEventType::OnActorEndCursorOver:\
+				if (Condition Actor->OnEndCursorOver.IsAlreadyBound(UnrealCLR::Engine::Manager, &UUnrealCLRManager::ActorEndCursorOver))\
+					Actor->OnEndCursorOver. Method (UnrealCLR::Engine::Manager, &UUnrealCLRManager::ActorEndCursorOver);\
+				break;\
+			case ActorEventType::OnActorClicked:\
+				if (Condition Actor->OnClicked.IsAlreadyBound(UnrealCLR::Engine::Manager, &UUnrealCLRManager::ActorClicked))\
+					Actor->OnClicked. Method (UnrealCLR::Engine::Manager, &UUnrealCLRManager::ActorClicked);\
+				break;\
+			case ActorEventType::OnActorReleased:\
+				if (Condition Actor->OnReleased.IsAlreadyBound(UnrealCLR::Engine::Manager, &UUnrealCLRManager::ActorReleased))\
+					Actor->OnReleased. Method (UnrealCLR::Engine::Manager, &UUnrealCLRManager::ActorReleased);\
+				break;\
 			default:\
 				break;\
 		}\
@@ -290,6 +347,22 @@ namespace UnrealCLRFramework {
 				if (Condition PrimitiveComponent->OnComponentHit.IsAlreadyBound(UnrealCLR::Engine::Manager, &UUnrealCLRManager::ComponentHit))\
 					PrimitiveComponent->OnComponentHit. Method (UnrealCLR::Engine::Manager, &UUnrealCLRManager::ComponentHit);\
 				break;\
+			case ComponentEventType::OnComponentBeginCursorOver:\
+				if (Condition PrimitiveComponent->OnBeginCursorOver.IsAlreadyBound(UnrealCLR::Engine::Manager, &UUnrealCLRManager::ComponentBeginCursorOver))\
+					PrimitiveComponent->OnBeginCursorOver. Method (UnrealCLR::Engine::Manager, &UUnrealCLRManager::ComponentBeginCursorOver);\
+				break;\
+			case ComponentEventType::OnComponentEndCursorOver:\
+				if (Condition PrimitiveComponent->OnEndCursorOver.IsAlreadyBound(UnrealCLR::Engine::Manager, &UUnrealCLRManager::ComponentEndCursorOver))\
+					PrimitiveComponent->OnEndCursorOver. Method (UnrealCLR::Engine::Manager, &UUnrealCLRManager::ComponentEndCursorOver);\
+				break;\
+			case ComponentEventType::OnComponentClicked:\
+				if (Condition PrimitiveComponent->OnClicked.IsAlreadyBound(UnrealCLR::Engine::Manager, &UUnrealCLRManager::ComponentClicked))\
+					PrimitiveComponent->OnClicked. Method (UnrealCLR::Engine::Manager, &UUnrealCLRManager::ComponentClicked);\
+				break;\
+			case ComponentEventType::OnComponentReleased:\
+				if (Condition PrimitiveComponent->OnReleased.IsAlreadyBound(UnrealCLR::Engine::Manager, &UUnrealCLRManager::ComponentReleased))\
+					PrimitiveComponent->OnReleased. Method (UnrealCLR::Engine::Manager, &UUnrealCLRManager::ComponentReleased);\
+				break;\
 			default:\
 				break;\
 		}\
@@ -297,21 +370,40 @@ namespace UnrealCLRFramework {
 
 	#define UNREALCLR_COLOR_TO_INTEGER(Color) (Color.A << 24) + (Color.R << 16) + (Color.G << 8) + Color.B
 
-	static_assert(AudioFadeCurve::Count != AudioFadeCurve(5), "Invalid elements count of the [AudioFadeCurve] enumeration");
-	static_assert(BlendType::VTBlend_MAX != BlendType(6), "Invalid elements count of the [BlendType] enumeration");
-	static_assert(CollisionChannel::ECC_MAX != CollisionChannel(34), "Invalid elements count of the [CollisionChannel] enumeration");
-	static_assert(CollisionResponse::ECR_MAX != CollisionChannel(2), "Invalid elements count of the [CollisionResponse] enumeration");
-	static_assert(ControllerHand::ControllerHand_Count != ControllerHand(18), "Invalid elements count of the [ControllerHand] enumeration");
-	static_assert(InputEvent::IE_MAX != InputEvent(6), "Invalid elements count of the [InputEvent] enumeration");
-	static_assert(NetMode::NM_MAX != NetMode(5), "Invalid elements count of the [NetMode] enumeration");
+	#if ENGINE_MAJOR_VERSION == 4
+		#if ENGINE_MINOR_VERSION <= 26
+			#define UNREALCLR_BLEND_TYPE 5
+		#elif ENGINE_MINOR_VERSION >= 27
+			#define UNREALCLR_BLEND_TYPE 6
+		#endif
 
-	static_assert(sizeof(CollisionShape) != 20, "Invalid size of the [CollisionShape] structure");
+		#if ENGINE_MINOR_VERSION <= 25
+			#define UNREALCLR_PIXEL_FORMAT 71
+		#elif ENGINE_MINOR_VERSION >= 26
+			#define UNREALCLR_PIXEL_FORMAT 72
+		#endif
+	#elif ENGINE_MAJOR_VERSION == 5
+		#define UNREALCLR_PIXEL_FORMAT 72
+		#define UNREALCLR_BLEND_TYPE 6
+	#endif
+
+	static_assert(AudioFadeCurve::Count == AudioFadeCurve(4), "Invalid elements count of the [AudioFadeCurve] enumeration");
+	static_assert(BlendType::VTBlend_MAX == BlendType(UNREALCLR_BLEND_TYPE), "Invalid elements count of the [BlendType] enumeration");
+	static_assert(CollisionChannel::ECC_MAX == CollisionChannel(33), "Invalid elements count of the [CollisionChannel] enumeration");
+	static_assert(CollisionResponse::ECR_MAX == CollisionResponse(3), "Invalid elements count of the [CollisionResponse] enumeration");
+	static_assert(ControllerHand::ControllerHand_Count == ControllerHand(17), "Invalid elements count of the [ControllerHand] enumeration");
+	static_assert(InputEvent::IE_MAX == InputEvent(5), "Invalid elements count of the [InputEvent] enumeration");
+	static_assert(NetMode::NM_MAX == NetMode(4), "Invalid elements count of the [NetMode] enumeration");
+	static_assert(PixelFormat::PF_MAX == PixelFormat(UNREALCLR_PIXEL_FORMAT), "Invalid elements count of the [PixelFormat] enumeration");
+
+	static_assert(sizeof(Bounds) == 28, "Invalid size of the [Bounds] structure");
+	static_assert(sizeof(CollisionShape) == 16, "Invalid size of the [CollisionShape] structure");
 
 	namespace Assert {
-		void OutputMessage(const char* Message) {
-			FString message(ANSI_TO_TCHAR(Message));
+		void OutputMessage(const uint8* Message) {
+			FString message(UTF8_TO_TCHAR(Message));
 
-			UE_LOG(LogUnrealAssert, Error, TEXT("%s: %s"), ANSI_TO_TCHAR(__FUNCTION__), *message);
+			UE_LOG(LogUnrealManaged, Error, TEXT("%s: %s"), ANSI_TO_TCHAR(__FUNCTION__), *message);
 
 			GEngine->AddOnScreenDebugMessage((uint64)-1, 60.0f, FColor::Red, *message);
 		}
@@ -334,8 +426,8 @@ namespace UnrealCLRFramework {
 	}
 
 	namespace Debug {
-		void Log(LogLevel Level, const char* Message) {
-			#define UNREALCLR_FRAMEWORK_LOG(Verbosity) UE_LOG(LogUnrealManaged, Verbosity, TEXT("%s: %s"), ANSI_TO_TCHAR(__FUNCTION__), *FString(ANSI_TO_TCHAR(Message)));
+		void Log(LogLevel Level, const uint8* Message) {
+			#define UNREALCLR_FRAMEWORK_LOG(Verbosity) UE_LOG(LogUnrealManaged, Verbosity, TEXT("%s: %s"), ANSI_TO_TCHAR(__FUNCTION__), *FString(UTF8_TO_TCHAR(Message)));
 
 			if (Level == LogLevel::Display) {
 				UNREALCLR_FRAMEWORK_LOG(Display);
@@ -348,12 +440,12 @@ namespace UnrealCLRFramework {
 			}
 		}
 
-		void HandleException(const char* Message) {
-			GEngine->AddOnScreenDebugMessage((uint64)-1, 60.0f, FColor::Red, *FString(ANSI_TO_TCHAR(Message)));
+		void Exception(const uint8* Message) {
+			GEngine->AddOnScreenDebugMessage((uint64)-1, 10.0f, FColor::Red, *FString(UTF8_TO_TCHAR(Message)));
 		}
 
-		void AddOnScreenMessage(int32 Key, float TimeToDisplay, Color DisplayColor, const char* Message) {
-			GEngine->AddOnScreenDebugMessage((uint64)Key, TimeToDisplay, DisplayColor, *FString(ANSI_TO_TCHAR(Message)));
+		void AddOnScreenMessage(int32 Key, float TimeToDisplay, Color DisplayColor, const uint8* Message) {
+			GEngine->AddOnScreenDebugMessage((uint64)Key, TimeToDisplay, DisplayColor, *FString(UTF8_TO_TCHAR(Message)));
 		}
 
 		void ClearOnScreenMessages() {
@@ -455,6 +547,11 @@ namespace UnrealCLRFramework {
 					break;
 				}
 
+				case ObjectType::Font: {
+					object = StaticLoadObject(UFont::StaticClass(), nullptr, *FString(ANSI_TO_TCHAR(Name)));
+					break;
+				}
+
 				case ObjectType::Texture2D: {
 					object = StaticLoadObject(UTexture2D::StaticClass(), nullptr, *FString(ANSI_TO_TCHAR(Name)));
 					break;
@@ -471,6 +568,12 @@ namespace UnrealCLRFramework {
 			FString name(ANSI_TO_TCHAR(Name));
 
 			Object->Rename(*name);
+		}
+
+		bool Invoke(UObject* Object, const uint8* Command) {
+			static FOutputDeviceNull outputDevice;
+
+			return Object->CallFunctionByNameWithArguments(UTF8_TO_TCHAR(Command), outputDevice, nullptr, true);
 		}
 
 		AActor* ToActor(UObject* Object, ActorType Type) {
@@ -503,7 +606,7 @@ namespace UnrealCLRFramework {
 			UNREALCLR_GET_PROPERTY_VALUE(FBoolProperty, Object, Name, Value);
 		}
 
-		bool GetByte(UObject* Object, const char* Name, int8* Value) {
+		bool GetByte(UObject* Object, const char* Name, uint8* Value) {
 			UNREALCLR_GET_PROPERTY_VALUE(FByteProperty, Object, Name, Value);
 		}
 
@@ -539,6 +642,40 @@ namespace UnrealCLRFramework {
 			UNREALCLR_GET_PROPERTY_VALUE(FDoubleProperty, Object, Name, Value);
 		}
 
+		bool GetEnum(UObject* Object, const char* Name, int32* Value) {
+			FName name(ANSI_TO_TCHAR(Name));
+
+			for (TFieldIterator<FNumericProperty> currentProperty(Object->GetClass()); currentProperty; ++currentProperty) {
+				FNumericProperty* property = *currentProperty;
+
+				if (property->GetFName() == name) {
+					*Value = static_cast<int32>(property->GetSignedIntPropertyValue(property->ContainerPtrToValuePtr<int32>(Object)));
+
+					return true;
+				}
+			}
+
+			return false;
+		}
+
+		bool GetString(UObject* Object, const char* Name, char* Value) {
+			FName name(ANSI_TO_TCHAR(Name));
+
+			for (TFieldIterator<FStrProperty> currentProperty(Object->GetClass()); currentProperty; ++currentProperty) {
+				FStrProperty* property = *currentProperty;
+
+				if (property->GetFName() == name) {
+					const char* string = TCHAR_TO_ANSI(*property->GetPropertyValue_InContainer(Object));
+
+					UnrealCLR::Utility::Strcpy(Value, string, UnrealCLR::Utility::Strlen(string));
+
+					return true;
+				}
+			}
+
+			return false;
+		}
+
 		bool GetText(UObject* Object, const char* Name, char* Value) {
 			FName name(ANSI_TO_TCHAR(Name));
 
@@ -561,7 +698,7 @@ namespace UnrealCLRFramework {
 			UNREALCLR_SET_PROPERTY_VALUE(FBoolProperty, Object, Name, Value);
 		}
 
-		bool SetByte(UObject* Object, const char* Name, int8 Value) {
+		bool SetByte(UObject* Object, const char* Name, uint8 Value) {
 			UNREALCLR_SET_PROPERTY_VALUE(FByteProperty, Object, Name, Value);
 		}
 
@@ -597,6 +734,38 @@ namespace UnrealCLRFramework {
 			UNREALCLR_SET_PROPERTY_VALUE(FDoubleProperty, Object, Name, Value);
 		}
 
+		bool SetEnum(UObject* Object, const char* Name, int32 Value) {
+			FName name(ANSI_TO_TCHAR(Name));
+
+			for (TFieldIterator<FNumericProperty> currentProperty(Object->GetClass()); currentProperty; ++currentProperty) {
+				FNumericProperty* property = *currentProperty;
+
+				if (property->GetFName() == name) {
+					property->SetIntPropertyValue(property->ContainerPtrToValuePtr<int32>(Object), static_cast<int64>(Value));
+
+					return true;
+				}
+			}
+
+			return false;
+		}
+
+		bool SetString(UObject* Object, const char* Name, const char* Value) {
+			FName name(ANSI_TO_TCHAR(Name));
+
+			for (TFieldIterator<FStrProperty> currentProperty(Object->GetClass()); currentProperty; ++currentProperty) {
+				FStrProperty* property = *currentProperty;
+
+				if (property->GetFName() == name) {
+					property->SetPropertyValue_InContainer(Object, FString(ANSI_TO_TCHAR(Value)));
+
+					return true;
+				}
+			}
+
+			return false;
+		}
+
 		bool SetText(UObject* Object, const char* Name, const char* Value) {
 			FName name(ANSI_TO_TCHAR(Name));
 
@@ -611,6 +780,67 @@ namespace UnrealCLRFramework {
 			}
 
 			return false;
+		}
+	}
+
+	namespace Asset {
+		bool IsValid(FAssetData* Asset) {
+			return Asset->IsValid();
+		}
+
+		void GetName(FAssetData* Asset, char* Name) {
+			const char* name = TCHAR_TO_ANSI(*Asset->AssetName.ToString());
+
+			UnrealCLR::Utility::Strcpy(Name, name, UnrealCLR::Utility::Strlen(name));
+		}
+
+		void GetPath(FAssetData* Asset, char* Path) {
+			FString objectPath = Asset->ObjectPath.ToString();
+
+			int32 index = INDEX_NONE;
+
+			if (objectPath.FindLastChar(TCHAR('.'), index))
+				objectPath = FString(index, *objectPath);
+
+			const char* path = TCHAR_TO_ANSI(*objectPath);
+
+			UnrealCLR::Utility::Strcpy(Path, path, UnrealCLR::Utility::Strlen(path));
+		}
+	}
+
+	namespace AssetRegistry {
+		IAssetRegistry* Get() {
+			static IAssetRegistry* assetRegistry;
+
+			if (!assetRegistry)
+				assetRegistry = &FModuleManager::Get().LoadModuleChecked<FAssetRegistryModule>(TEXT("AssetRegistry")).Get();
+
+			return assetRegistry;
+		}
+
+		bool HasAssets(IAssetRegistry* AssetRegistry, const char* Path, bool Recursive) {
+			return AssetRegistry->HasAssets(FName(ANSI_TO_TCHAR(Path)), Recursive);
+		}
+
+		void ForEachAsset(IAssetRegistry* AssetRegistry, const char* Path, bool Recursive, bool IncludeOnlyOnDiskAssets, FAssetData** Array, int32* Elements) {
+			static TArray<FAssetData> assets;
+			static TArray<FAssetData*> references;
+
+			assets.Reset();
+			references.Reset();
+
+			AssetRegistry->GetAssetsByPath(FName(ANSI_TO_TCHAR(Path)), assets, Recursive, IncludeOnlyOnDiskAssets);
+
+			int32 elements = assets.Num();
+
+			if (elements > 0) {
+				for (int32 i = 0; i < elements; i++) {
+					references.Add(&assets[i]);
+				}
+
+				*Array = reinterpret_cast<FAssetData*>(references.GetData());
+				*Elements = references.Num();
+			}
 		}
 	}
 
@@ -658,7 +888,7 @@ namespace UnrealCLRFramework {
 		}
 
 		void GetProjectDirectory(char* Directory) {
-			const char* directory = TCHAR_TO_ANSI(FGenericPlatformMisc::ProjectDir());
+			const char* directory = TCHAR_TO_ANSI(*FPaths::ConvertRelativePathToFull(FPaths::ProjectDir()));
 
 			UnrealCLR::Utility::Strcpy(Directory, directory, UnrealCLR::Utility::Strlen(directory));
 		}
@@ -725,7 +955,7 @@ namespace UnrealCLRFramework {
 					if (Arguments.Num() > 0)
 						FDefaultValueHelper::ParseFloat(Arguments[0], value);
 
-					UnrealCLR::ExecuteManagedFunction(Callback, value);
+					UnrealCLR::ManagedCommand(UnrealCLR::Command((void*)Callback, value));
 				}
 			};
 
@@ -847,6 +1077,23 @@ namespace UnrealCLRFramework {
 	}
 
 	namespace World {
+		void ForEachActor(AActor** Array, int32* Elements) {
+			static TArray<AActor*> actors;
+
+			actors.Reset();
+
+			for (TActorIterator<AActor> currentActor(UnrealCLR::Engine::World); currentActor; ++currentActor) {
+				actors.Add(*currentActor);
+			}
+
+			int32 elements = actors.Num();
+
+			if (elements > 0) {
+				*Array = reinterpret_cast<AActor*>(actors.GetData());
+				*Elements = elements;
+			}
+		}
+
 		int32 GetActorCount() {
 			return UnrealCLR::Engine::World->GetActorCount();
 		}
@@ -892,7 +1139,7 @@ namespace UnrealCLRFramework {
 			UNREALCLR_GET_ACTOR_TYPE(Type, UNREALCLR_NONE, ::StaticClass(), type);
 
 			for (TActorIterator<AActor> currentActor(UnrealCLR::Engine::World, type); currentActor; ++currentActor) {
-				if (!Name || Name && *currentActor->GetName() == name) {
+				if (!Name || (Name && *currentActor->GetName() == name)) {
 					actor = *currentActor;
 					break;
 				}
@@ -938,28 +1185,64 @@ namespace UnrealCLRFramework {
 			return UnrealCLR::Engine::World->GetFirstPlayerController();
 		}
 
+		AGameModeBase* GetGameMode() {
+			return UnrealCLR::Engine::World->GetAuthGameMode();
+		}
+
 		void SetOnActorBeginOverlapCallback(ActorOverlapDelegate Callback) {
-			UnrealCLR::Shared::Events[UnrealCLR::OnActorBeginOverlap] = Callback;
+			UnrealCLR::Shared::Events[UnrealCLR::OnActorBeginOverlap] = (void*)Callback;
 		}
 
 		void SetOnActorEndOverlapCallback(ActorOverlapDelegate Callback) {
-			UnrealCLR::Shared::Events[UnrealCLR::OnActorEndOverlap] = Callback;
+			UnrealCLR::Shared::Events[UnrealCLR::OnActorEndOverlap] = (void*)Callback;
 		}
 
 		void SetOnActorHitCallback(ActorHitDelegate Callback) {
-			UnrealCLR::Shared::Events[UnrealCLR::OnActorHit] = Callback;
+			UnrealCLR::Shared::Events[UnrealCLR::OnActorHit] = (void*)Callback;
+		}
+
+		void SetOnActorBeginCursorOverCallback(ActorCursorDelegate Callback) {
+			UnrealCLR::Shared::Events[UnrealCLR::OnActorBeginCursorOver] = (void*)Callback;
+		}
+
+		void SetOnActorEndCursorOverCallback(ActorCursorDelegate Callback) {
+			UnrealCLR::Shared::Events[UnrealCLR::OnActorEndCursorOver] = (void*)Callback;
+		}
+
+		void SetOnActorClickedCallback(ActorKeyDelegate Callback) {
+			UnrealCLR::Shared::Events[UnrealCLR::OnActorClicked] = (void*)Callback;
+		}
+
+		void SetOnActorReleasedCallback(ActorKeyDelegate Callback) {
+			UnrealCLR::Shared::Events[UnrealCLR::OnActorReleased] = (void*)Callback;
 		}
 
 		void SetOnComponentBeginOverlapCallback(ComponentOverlapDelegate Callback) {
-			UnrealCLR::Shared::Events[UnrealCLR::OnComponentBeginOverlap] = Callback;
+			UnrealCLR::Shared::Events[UnrealCLR::OnComponentBeginOverlap] = (void*)Callback;
 		}
 
 		void SetOnComponentEndOverlapCallback(ComponentOverlapDelegate Callback) {
-			UnrealCLR::Shared::Events[UnrealCLR::OnComponentEndOverlap] = Callback;
+			UnrealCLR::Shared::Events[UnrealCLR::OnComponentEndOverlap] = (void*)Callback;
 		}
 
 		void SetOnComponentHitCallback(ComponentHitDelegate Callback) {
-			UnrealCLR::Shared::Events[UnrealCLR::OnComponentHit] = Callback;
+			UnrealCLR::Shared::Events[UnrealCLR::OnComponentHit] = (void*)Callback;
+		}
+
+		void SetOnComponentBeginCursorOverCallback(ComponentCursorDelegate Callback) {
+			UnrealCLR::Shared::Events[UnrealCLR::OnComponentBeginCursorOver] = (void*)Callback;
+		}
+
+		void SetOnComponentEndCursorOverCallback(ComponentCursorDelegate Callback) {
+			UnrealCLR::Shared::Events[UnrealCLR::OnComponentEndCursorOver] = (void*)Callback;
+		}
+
+		void SetOnComponentClickedCallback(ComponentKeyDelegate Callback) {
+			UnrealCLR::Shared::Events[UnrealCLR::OnComponentClicked] = (void*)Callback;
+		}
+
+		void SetOnComponentReleasedCallback(ComponentKeyDelegate Callback) {
+			UnrealCLR::Shared::Events[UnrealCLR::OnComponentReleased] = (void*)Callback;
 		}
 
 		void SetSimulatePhysics(bool Value) {
@@ -1157,7 +1440,7 @@ namespace UnrealCLRFramework {
 
 		void SetOnChangedCallback(IConsoleVariable* ConsoleVariable, ConsoleVariableDelegate Callback) {
 			auto callback = [Callback](IConsoleVariable* ConsoleVariable) {
-				UnrealCLR::ExecuteManagedFunction(Callback, nullptr);
+				UnrealCLR::ManagedCommand(UnrealCLR::Command((void*)Callback));
 			};
 
 			ConsoleVariable->SetOnChangedCallback(FConsoleVariableDelegate::CreateLambda(callback));
@@ -1183,6 +1466,66 @@ namespace UnrealCLRFramework {
 			return Actor->IsOverlappingActor(Other);
 		}
 
+		void ForEachComponent(AActor* Actor, UActorComponent** Array, int32* Elements) {
+			static TArray<UActorComponent*> components;
+
+			components.Reset();
+
+			Actor->GetComponents(components);
+
+			int32 elements = components.Num();
+
+			if (elements > 0) {
+				*Array = reinterpret_cast<UActorComponent*>(components.GetData());
+				*Elements = elements;
+			}
+		}
+
+		void ForEachAttachedActor(AActor* Actor, AActor** Array, int32* Elements) {
+			static TArray<AActor*> actors;
+
+			actors.Reset();
+
+			Actor->GetAttachedActors(actors);
+
+			int32 elements = actors.Num();
+
+			if (elements > 0) {
+				*Array = reinterpret_cast<AActor*>(actors.GetData());
+				*Elements = elements;
+			}
+		}
+
+		void ForEachChildActor(AActor* Actor, AActor** Array, int32* Elements) {
+			static TArray<AActor*> actors;
+
+			actors.Reset();
+
+			Actor->GetAllChildActors(actors);
+
+			int32 elements = actors.Num();
+
+			if (elements > 0) {
+				*Array = reinterpret_cast<AActor*>(actors.GetData());
+				*Elements = elements;
+			}
+		}
+
+		void ForEachOverlappingActor(AActor* Actor, AActor** Array, int32* Elements) {
+			static TArray<AActor*> overlappingActors;
+
+			overlappingActors.Reset();
+
+			Actor->GetOverlappingActors(overlappingActors);
+
+			int32 elements = overlappingActors.Num();
+
+			if (elements > 0) {
+				*Array = reinterpret_cast<AActor*>(overlappingActors.GetData());
+				*Elements = elements;
+			}
+		}
+
 		AActor* Spawn(const char* Name, ActorType Type, UObject* Blueprint) {
 			AActor* actor = nullptr;
 
@@ -1196,7 +1539,7 @@ namespace UnrealCLRFramework {
 				#endif
 			}
 
-			if (Name) {
+			if (actor && Name) {
 				FString name(ANSI_TO_TCHAR(Name));
 
 				actor->Rename(*name);
@@ -1242,7 +1585,7 @@ namespace UnrealCLRFramework {
 			UNREALCLR_GET_COMPONENT_TYPE(Type, UNREALCLR_NONE, ::StaticClass(), type);
 
 			for (UActorComponent* currentComponent : Actor->GetComponents()) {
-				if (currentComponent && currentComponent->IsA(type) && (!Name || Name && *currentComponent->GetName() == name)) {
+				if (currentComponent && currentComponent->IsA(type) && (!Name || (Name && *currentComponent->GetName() == name))) {
 					component = currentComponent;
 					break;
 				}
@@ -1384,7 +1727,81 @@ namespace UnrealCLRFramework {
 		}
 	}
 
+	namespace GameModeBase {
+		bool GetUseSeamlessTravel(AGameModeBase* GameModeBase) {
+			return GameModeBase->bUseSeamlessTravel;
+		}
+
+		void SetUseSeamlessTravel(AGameModeBase* GameModeBase, bool Value) {
+			GameModeBase->bUseSeamlessTravel = Value;
+		}
+
+		void SwapPlayerControllers(AGameModeBase* GameModeBase, APlayerController* PlayerController, APlayerController* NewPlayerController) {
+			GameModeBase->SwapPlayerControllers(PlayerController, NewPlayerController);
+		}
+	}
+
 	namespace Pawn {
+		bool IsControlled(APawn* Pawn) {
+			return Pawn->IsPawnControlled();
+		}
+
+		bool IsPlayerControlled(APawn* Pawn) {
+			return Pawn->IsPlayerControlled();
+		}
+
+		AutoPossessAI GetAutoPossessAI(APawn* Pawn) {
+			return Pawn->AutoPossessAI;
+		}
+
+		AutoReceiveInput GetAutoPossessPlayer(APawn* Pawn) {
+			return Pawn->AutoPossessPlayer;
+		}
+
+		bool GetUseControllerRotationYaw(APawn* Pawn) {
+			return Pawn->bUseControllerRotationYaw;
+		}
+
+		bool GetUseControllerRotationPitch(APawn* Pawn) {
+			return Pawn->bUseControllerRotationPitch;
+		}
+
+		bool GetUseControllerRotationRoll(APawn* Pawn) {
+			return Pawn->bUseControllerRotationRoll;
+		}
+
+		void GetGravityDirection(APawn* Pawn, Vector3* Value) {
+			*Value = Pawn->GetGravityDirection();
+		}
+
+		AAIController* GetAIController(APawn* Pawn) {
+			return Cast<AAIController>(Pawn->GetController());
+		}
+
+		APlayerController* GetPlayerController(APawn* Pawn) {
+			return Cast<APlayerController>(Pawn->GetController());
+		}
+
+		void SetAutoPossessAI(APawn* Pawn, AutoPossessAI Value) {
+			Pawn->AutoPossessAI = Value;
+		}
+
+		void SetAutoPossessPlayer(APawn* Pawn, AutoReceiveInput Value) {
+			Pawn->AutoPossessPlayer = Value;
+		}
+
+		void SetUseControllerRotationYaw(APawn* Pawn, bool Value) {
+			Pawn->bUseControllerRotationYaw = Value;
+		}
+
+		void SetUseControllerRotationPitch(APawn* Pawn, bool Value) {
+			Pawn->bUseControllerRotationPitch = Value;
+		}
+
+		void SetUseControllerRotationRoll(APawn* Pawn, bool Value) {
+			Pawn->bUseControllerRotationRoll = Value;
+		}
+
 		void AddControllerYawInput(APawn* Pawn, float Value) {
 			Pawn->AddControllerYawInput(Value);
 		}
@@ -1400,9 +1817,55 @@ namespace UnrealCLRFramework {
 		void AddMovementInput(APawn* Pawn, const Vector3* WorldDirection, float ScaleValue, bool Force) {
 			Pawn->AddMovementInput(*WorldDirection, ScaleValue, Force);
 		}
+	}
 
-		void GetGravityDirection(APawn* Pawn, Vector3* Value) {
-			*Value = Pawn->GetGravityDirection();
+	namespace Character {
+		bool IsCrouched(ACharacter* Character) {
+			return Character->bIsCrouched;
+		}
+
+		bool CanCrouch(ACharacter* Character) {
+			return Character->CanCrouch();
+		}
+
+		bool CanJump(ACharacter* Character) {
+			return Character->CanJump();
+		}
+
+		void CheckJumpInput(ACharacter* Character, float DeltaTime) {
+			Character->CheckJumpInput(DeltaTime);
+		}
+
+		void ClearJumpInput(ACharacter* Character, float DeltaTime) {
+			Character->ClearJumpInput(DeltaTime);
+		}
+
+		void Launch(ACharacter* Character, const Vector3* Velocity, bool OverrideXY, bool OverrideZ) {
+			Character->LaunchCharacter(*Velocity, OverrideXY, OverrideZ);
+		}
+
+		void Crouch(ACharacter* Character) {
+			Character->Crouch();
+		}
+
+		void StopCrouching(ACharacter* Character) {
+			Character->UnCrouch();
+		}
+
+		void Jump(ACharacter* Character) {
+			Character->Jump();
+		}
+
+		void StopJumping(ACharacter* Character) {
+			Character->StopJumping();
+		}
+
+		void SetOnLandedCallback(ACharacter* Character, CharacterLandedDelegate Callback) {
+			UUnrealCLRCharacter* character = NewObject<UUnrealCLRCharacter>(Character);
+
+			character->LandedCallback = (void*)Callback;
+
+			Character->LandedDelegate.AddDynamic(character, &UUnrealCLRCharacter::Landed);
 		}
 	}
 
@@ -1423,8 +1886,28 @@ namespace UnrealCLRFramework {
 			return Controller->GetPawn();
 		}
 
+		ACharacter* GetCharacter(AController* Controller) {
+			return Controller->GetCharacter();
+		}
+
+		AActor* GetViewTarget(AController* Controller) {
+			return Controller->GetViewTarget();
+		}
+
+		void GetControlRotation(AController* Controller, Quaternion* Value) {
+			*Value = Controller->GetControlRotation().Quaternion();
+		}
+
+		void GetDesiredRotation(AController* Controller, Quaternion* Value) {
+			*Value = Controller->GetDesiredRotation().Quaternion();
+		}
+
 		bool LineOfSightTo(AController* Controller, AActor* Actor, const Vector3* ViewPoint, bool AlternateChecks) {
 			return Controller->LineOfSightTo(Actor, *ViewPoint, AlternateChecks);
+		}
+
+		void SetControlRotation(AController* Controller, const Quaternion* Value) {
+			Controller->SetControlRotation(FRotator(*Value));
 		}
 
 		void SetInitialLocationAndRotation(AController* Controller, const Vector3* NewLocation, const Quaternion* NewRotation) {
@@ -1445,6 +1928,14 @@ namespace UnrealCLRFramework {
 
 		void ResetIgnoreMoveInput(AController* Controller) {
 			Controller->ResetIgnoreMoveInput();
+		}
+
+		void Possess(AController* Controller, APawn* Pawn) {
+			Controller->Possess(Pawn);
+		}
+
+		void Unpossess(AController* Controller) {
+			Controller->UnPossess();
 		}
 	}
 
@@ -1487,6 +1978,14 @@ namespace UnrealCLRFramework {
 			return PlayerController->bShowMouseCursor;
 		}
 
+		bool GetEnableClickEvents(APlayerController* PlayerController) {
+			return PlayerController->bEnableClickEvents;
+		}
+
+		bool GetEnableMouseOverEvents(APlayerController* PlayerController) {
+			return PlayerController->bEnableMouseOverEvents;
+		}
+
 		bool GetMousePosition(APlayerController* PlayerController, float* X, float* Y) {
 			return PlayerController->GetMousePosition(*X, *Y);
 		}
@@ -1499,8 +1998,36 @@ namespace UnrealCLRFramework {
 			return PlayerController->PlayerInput;
 		}
 
+		bool GetHitResultAtScreenPosition(APlayerController* PlayerController, const Vector2* ScreenPosition, CollisionChannel TraceChannel, Hit* Hit, bool TraceComplex) {
+			FHitResult hit;
+
+			bool result = PlayerController->GetHitResultAtScreenPosition(*ScreenPosition, TraceChannel, TraceComplex, hit);
+
+			*Hit = hit;
+
+			return result;
+		}
+
+		bool GetHitResultUnderCursor(APlayerController* PlayerController, CollisionChannel TraceChannel, Hit* Hit, bool TraceComplex) {
+			FHitResult hit;
+
+			bool result = PlayerController->GetHitResultUnderCursor(TraceChannel, TraceComplex, hit);
+
+			*Hit = hit;
+
+			return result;
+		}
+
 		void SetShowMouseCursor(APlayerController* PlayerController, bool Value) {
 			PlayerController->bShowMouseCursor = Value;
+		}
+
+		void SetEnableClickEvents(APlayerController* PlayerController, bool Value) {
+			PlayerController->bEnableClickEvents = Value;
+		}
+
+		void SetEnableMouseOverEvents(APlayerController* PlayerController, bool Value) {
+			PlayerController->bEnableMouseOverEvents = Value;
 		}
 
 		void SetMousePosition(APlayerController* PlayerController, float X, float Y) {
@@ -1705,10 +2232,37 @@ namespace UnrealCLRFramework {
 		}
 	}
 
+	namespace Font {
+		void GetStringSize(UFont* Font, const char* Text, int32* Height, int32* Width) {
+			int32 height, width;
+
+			Font->GetStringHeightAndWidth(ANSI_TO_TCHAR(Text), height, width);
+
+			*Height = height;
+			*Width = width;
+		}
+	}
+
 	namespace Texture2D {
+		UTexture2D* CreateFromFile(const char* FilePath) {
+			return FImageUtils::ImportFileAsTexture2D(FString(ANSI_TO_TCHAR(FilePath)));
+		}
+
+		UTexture2D* CreateFromBuffer(const uint8* Buffer, int32 Length) {
+			return FImageUtils::ImportBufferAsTexture2D(TArray<uint8>(Buffer, Length));
+		}
+
+		bool HasAlphaChannel(UTexture2D* Texture2D) {
+			return Texture2D->HasAlphaChannel();
+		}
+
 		void GetSize(UTexture2D* Texture2D, Vector2* Value) {
 			Value->X = Texture2D->GetSizeX();
 			Value->Y = Texture2D->GetSizeY();
+		}
+
+		PixelFormat GetPixelFormat(UTexture2D* Texture2D) {
+			return Texture2D->GetPixelFormat();
 		}
 	}
 
@@ -1725,8 +2279,8 @@ namespace UnrealCLRFramework {
 			return actor;
 		}
 
-		void Destroy(UActorComponent* ActorComponent, bool PromoteChildren) {
-			ActorComponent->DestroyComponent(PromoteChildren);
+		void Destroy(UActorComponent* ActorComponent, bool PromoteChild) {
+			ActorComponent->DestroyComponent(PromoteChild);
 		}
 
 		void AddTag(UActorComponent* ActorComponent, const char* Tag) {
@@ -1760,7 +2314,7 @@ namespace UnrealCLRFramework {
 
 			actionBinding.bExecuteWhenPaused = ExecutedWhenPaused;
 			actionBinding.ActionDelegate.GetDelegateForManualSet().BindLambda([Callback]() {
-				UnrealCLR::ExecuteManagedFunction(Callback, nullptr);
+				UnrealCLR::ManagedCommand(UnrealCLR::Command((void*)Callback));
 			});
 
 			InputComponent->AddActionBinding(actionBinding);
@@ -1771,7 +2325,7 @@ namespace UnrealCLRFramework {
 
 			axisBinding.bExecuteWhenPaused = ExecutedWhenPaused;
 			axisBinding.AxisDelegate.GetDelegateForManualSet().BindLambda([Callback](float AxisValue) {
-				UnrealCLR::ExecuteManagedFunction(Callback, AxisValue);
+				UnrealCLR::ManagedCommand(UnrealCLR::Command((void*)Callback, AxisValue));
 			});
 
 			InputComponent->AxisBindings.Emplace(axisBinding);
@@ -1816,12 +2370,35 @@ namespace UnrealCLRFramework {
 			return false;
 		}
 
+		bool IsVisible(USceneComponent* SceneComponent) {
+			return SceneComponent->IsVisible();
+		}
+
 		bool IsSocketExists(USceneComponent* SceneComponent, const char* SocketName) {
 			return SceneComponent->DoesSocketExist(FName(ANSI_TO_TCHAR(SocketName)));
 		}
 
 		bool HasAnySockets(USceneComponent* SceneComponent) {
 			return SceneComponent->HasAnySockets();
+		}
+
+		bool CanAttachAsChild(USceneComponent* SceneComponent, USceneComponent* ChildComponent, const char* SocketName) {
+			return SceneComponent->CanAttachAsChild(ChildComponent, FName(ANSI_TO_TCHAR(SocketName)));
+		}
+
+		void ForEachAttachedChild(USceneComponent* SceneComponent, USceneComponent** Array, int32* Elements) {
+			static TArray<USceneComponent*> attachedComponents;
+
+			attachedComponents.Reset();
+
+			attachedComponents = SceneComponent->GetAttachChildren();
+
+			int32 elements = attachedComponents.Num();
+
+			if (elements > 0) {
+				*Array = reinterpret_cast<USceneComponent*>(attachedComponents.GetData());
+				*Elements = elements;
+			}
 		}
 
 		USceneComponent* Create(AActor* Actor, ComponentType Type, const char* Name, bool SetAsRoot, UObject* Blueprint) {
@@ -1885,25 +2462,7 @@ namespace UnrealCLRFramework {
 		}
 
 		void UpdateToWorld(USceneComponent* SceneComponent, TeleportType Type, UpdateTransformFlags Flags) {
-			ETeleportType type = ETeleportType::None;
-
-			switch (Type) {
-				case ETeleportType::None:
-					break;
-
-				case ETeleportType::TeleportPhysics:
-					type = ETeleportType::TeleportPhysics;
-					break;
-
-				case ETeleportType::ResetPhysics:
-					type = ETeleportType::ResetPhysics;
-					break;
-
-				default:
-					break;
-			}
-
-			SceneComponent->UpdateComponentToWorld(static_cast<EUpdateTransformFlags>(Flags), type);
+			SceneComponent->UpdateComponentToWorld(static_cast<EUpdateTransformFlags>(Flags), Type);
 		}
 
 		void AddLocalOffset(USceneComponent* SceneComponent, const Vector3* DeltaLocation) {
@@ -1942,6 +2501,10 @@ namespace UnrealCLRFramework {
 			const char* socketName = TCHAR_TO_ANSI(*SceneComponent->GetAttachSocketName().ToString());
 
 			UnrealCLR::Utility::Strcpy(SocketName, socketName, UnrealCLR::Utility::Strlen(socketName));
+		}
+
+		void GetBounds(USceneComponent* SceneComponent, const Transform* LocalToWorld, Bounds* Value) {
+			*Value = SceneComponent->CalcBounds(*LocalToWorld);
 		}
 
 		void GetSocketLocation(USceneComponent* SceneComponent, const char* SocketName, Vector3* Value) {
@@ -1986,6 +2549,10 @@ namespace UnrealCLRFramework {
 
 		void SetMobility(USceneComponent* SceneComponent, ComponentMobility Mobility) {
 			SceneComponent->SetMobility(Mobility);
+		}
+
+		void SetVisibility(USceneComponent* SceneComponent, bool NewVisibility, bool PropagateToChildren) {
+			SceneComponent->SetVisibility(NewVisibility, PropagateToChildren);
 		}
 
 		void SetRelativeLocation(USceneComponent* SceneComponent, const Vector3* Location) {
@@ -2114,6 +2681,14 @@ namespace UnrealCLRFramework {
 	}
 
 	namespace ChildActorComponent {
+		AActor* GetChildActor(UChildActorComponent* ChildActorComponent, ActorType Type) {
+			AActor* actor = nullptr;
+
+			UNREALCLR_GET_ACTOR_TYPE(Type, Cast<, >(ChildActorComponent->GetChildActor()), actor);
+
+			return actor;
+		}
+
 		AActor* SetChildActor(UChildActorComponent* ChildActorComponent, ActorType Type) {
 			TSubclassOf<AActor> type;
 
@@ -2125,6 +2700,210 @@ namespace UnrealCLRFramework {
 		}
 	}
 
+	namespace SpringArmComponent {
+		bool IsCollisionFixApplied(USpringArmComponent* SpringArmComponent) {
+			return SpringArmComponent->IsCollisionFixApplied();
+		}
+
+		bool GetDrawDebugLagMarkers(USpringArmComponent* SpringArmComponent) {
+			return SpringArmComponent->bDrawDebugLagMarkers;
+		}
+
+		bool GetCollisionTest(USpringArmComponent* SpringArmComponent) {
+			return SpringArmComponent->bDoCollisionTest;
+		}
+
+		bool GetCameraPositionLag(USpringArmComponent* SpringArmComponent) {
+			return SpringArmComponent->bEnableCameraLag;
+		}
+
+		bool GetCameraRotationLag(USpringArmComponent* SpringArmComponent) {
+			return SpringArmComponent->bEnableCameraRotationLag;
+		}
+
+		bool GetCameraLagSubstepping(USpringArmComponent* SpringArmComponent) {
+			return SpringArmComponent->bUseCameraLagSubstepping;
+		}
+
+		bool GetInheritPitch(USpringArmComponent* SpringArmComponent) {
+			return SpringArmComponent->bInheritPitch;
+		}
+
+		bool GetInheritRoll(USpringArmComponent* SpringArmComponent) {
+			return SpringArmComponent->bInheritRoll;
+		}
+
+		bool GetInheritYaw(USpringArmComponent* SpringArmComponent) {
+			return SpringArmComponent->bInheritYaw;
+		}
+
+		float GetCameraLagMaxDistance(USpringArmComponent* SpringArmComponent) {
+			return SpringArmComponent->CameraLagMaxDistance;
+		}
+
+		float GetCameraLagMaxTimeStep(USpringArmComponent* SpringArmComponent) {
+			return SpringArmComponent->CameraLagMaxTimeStep;
+		}
+
+		float GetCameraPositionLagSpeed(USpringArmComponent* SpringArmComponent) {
+			return SpringArmComponent->CameraLagSpeed;
+		}
+
+		float GetCameraRotationLagSpeed(USpringArmComponent* SpringArmComponent) {
+			return SpringArmComponent->CameraRotationLagSpeed;
+		}
+
+		CollisionChannel GetProbeChannel(USpringArmComponent* SpringArmComponent) {
+			return SpringArmComponent->ProbeChannel;
+		}
+
+		float GetProbeSize(USpringArmComponent* SpringArmComponent) {
+			return SpringArmComponent->ProbeSize;
+		}
+
+		void GetSocketOffset(USpringArmComponent* SpringArmComponent, Vector3* Value) {
+			*Value = SpringArmComponent->SocketOffset;
+		}
+
+		float GetTargetArmLength(USpringArmComponent* SpringArmComponent) {
+			return SpringArmComponent->TargetArmLength;
+		}
+
+		void GetTargetOffset(USpringArmComponent* SpringArmComponent, Vector3* Value) {
+			*Value = SpringArmComponent->TargetOffset;
+		}
+
+		void GetUnfixedCameraPosition(USpringArmComponent* SpringArmComponent, Vector3* Value) {
+			*Value = SpringArmComponent->GetUnfixedCameraPosition();
+		}
+
+		void GetDesiredRotation(USpringArmComponent* SpringArmComponent, Quaternion* Value) {
+			*Value = SpringArmComponent->GetDesiredRotation().Quaternion();
+		}
+
+		void GetTargetRotation(USpringArmComponent* SpringArmComponent, Quaternion* Value) {
+			*Value = SpringArmComponent->GetTargetRotation().Quaternion();
+		}
+
+		bool GetUsePawnControlRotation(USpringArmComponent* SpringArmComponent) {
+			return SpringArmComponent->bUsePawnControlRotation;
+		}
+
+		void SetDrawDebugLagMarkers(USpringArmComponent* SpringArmComponent, bool Value) {
+			SpringArmComponent->bDrawDebugLagMarkers = Value;
+		}
+
+		void SetCollisionTest(USpringArmComponent* SpringArmComponent, bool Value) {
+			SpringArmComponent->bDoCollisionTest = Value;
+		}
+
+		void SetCameraPositionLag(USpringArmComponent* SpringArmComponent, bool Value) {
+			SpringArmComponent->bEnableCameraLag = Value;
+		}
+
+		void SetCameraRotationLag(USpringArmComponent* SpringArmComponent, bool Value) {
+			SpringArmComponent->bEnableCameraRotationLag = Value;
+		}
+
+		void SetCameraLagSubstepping(USpringArmComponent* SpringArmComponent, bool Value) {
+			SpringArmComponent->bUseCameraLagSubstepping = Value;
+		}
+
+		void SetInheritPitch(USpringArmComponent* SpringArmComponent, bool Value) {
+			SpringArmComponent->bInheritPitch = Value;
+		}
+
+		void SetInheritRoll(USpringArmComponent* SpringArmComponent, bool Value) {
+			SpringArmComponent->bInheritRoll = Value;
+		}
+
+		void SetInheritYaw(USpringArmComponent* SpringArmComponent, bool Value) {
+			SpringArmComponent->bInheritYaw = Value;
+		}
+
+		void SetCameraLagMaxDistance(USpringArmComponent* SpringArmComponent, float Value) {
+			SpringArmComponent->CameraLagMaxDistance = Value;
+		}
+
+		void SetCameraLagMaxTimeStep(USpringArmComponent* SpringArmComponent, float Value) {
+			SpringArmComponent->CameraLagMaxTimeStep = Value;
+		}
+
+		void SetCameraPositionLagSpeed(USpringArmComponent* SpringArmComponent, float Value) {
+			SpringArmComponent->CameraLagSpeed = Value;
+		}
+
+		void SetCameraRotationLagSpeed(USpringArmComponent* SpringArmComponent, float Value) {
+			SpringArmComponent->CameraRotationLagSpeed = Value;
+		}
+
+		void SetProbeChannel(USpringArmComponent* SpringArmComponent, CollisionChannel Value) {
+			SpringArmComponent->ProbeChannel = Value;
+		}
+
+		void SetProbeSize(USpringArmComponent* SpringArmComponent, float Value) {
+			SpringArmComponent->ProbeSize = Value;
+		}
+
+		void SetSocketOffset(USpringArmComponent* SpringArmComponent, const Vector3* Value) {
+			SpringArmComponent->SocketOffset = *Value;
+		}
+
+		void SetTargetArmLength(USpringArmComponent* SpringArmComponent, float Value) {
+			SpringArmComponent->TargetArmLength = Value;
+		}
+
+		void SetTargetOffset(USpringArmComponent* SpringArmComponent, const Vector3* Value) {
+			SpringArmComponent->TargetOffset = *Value;
+		}
+
+		void SetUsePawnControlRotation(USpringArmComponent* SpringArmComponent, bool value) {
+			SpringArmComponent->bUsePawnControlRotation = value;
+		}
+	}
+
+	namespace PostProcessComponent {
+		bool GetEnabled(UPostProcessComponent* PostProcessComponent) {
+			return PostProcessComponent->bEnabled;
+		}
+
+		float GetBlendRadius(UPostProcessComponent* PostProcessComponent) {
+			return PostProcessComponent->BlendRadius;
+		}
+
+		float GetBlendWeight(UPostProcessComponent* PostProcessComponent) {
+			return PostProcessComponent->BlendWeight;
+		}
+
+		bool GetUnbound(UPostProcessComponent* PostProcessComponent) {
+			return PostProcessComponent->bUnbound;
+		}
+
+		float GetPriority(UPostProcessComponent* PostProcessComponent) {
+			return PostProcessComponent->Priority;
+		}
+
+		void SetEnabled(UPostProcessComponent* PostProcessComponent, bool Value) {
+			PostProcessComponent->bEnabled = Value;
+		}
+
+		void SetBlendRadius(UPostProcessComponent* PostProcessComponent, float Value) {
+			PostProcessComponent->BlendRadius = Value;
+		}
+
+		void SetBlendWeight(UPostProcessComponent* PostProcessComponent, float Value) {
+			PostProcessComponent->BlendWeight = Value;
+		}
+
+		void SetUnbound(UPostProcessComponent* PostProcessComponent, bool Value) {
+			PostProcessComponent->bUnbound = Value;
+		}
+
+		void SetPriority(UPostProcessComponent* PostProcessComponent, float Priority) {
+			PostProcessComponent->Priority = Priority;
+		}
+	}
+
 	namespace PrimitiveComponent {
 		bool IsGravityEnabled(UPrimitiveComponent* PrimitiveComponent) {
 			return PrimitiveComponent->IsGravityEnabled();
@@ -2132,6 +2911,21 @@ namespace UnrealCLRFramework {
 
 		bool IsOverlappingComponent(UPrimitiveComponent* PrimitiveComponent, UPrimitiveComponent* Other) {
 			return PrimitiveComponent->IsOverlappingComponent(Other);
+		}
+
+		void ForEachOverlappingComponent(UPrimitiveComponent* PrimitiveComponent, UPrimitiveComponent** Array, int32* Elements) {
+			static TArray<UPrimitiveComponent*> overlappingComponents;
+
+			overlappingComponents.Reset();
+
+			PrimitiveComponent->GetOverlappingComponents(overlappingComponents);
+
+			int32 elements = overlappingComponents.Num();
+
+			if (elements > 0) {
+				*Array = reinterpret_cast<UPrimitiveComponent*>(overlappingComponents.GetData());
+				*Elements = elements;
+			}
 		}
 
 		void AddAngularImpulseInDegrees(UPrimitiveComponent* PrimitiveComponent, const Vector3* Impulse, const char* BoneName, bool VelocityChange) {
@@ -2233,6 +3027,14 @@ namespace UnrealCLRFramework {
 			return PrimitiveComponent->bOwnerNoSee;
 		}
 
+		bool GetIgnoreRadialForce(UPrimitiveComponent* PrimitiveComponent) {
+			return PrimitiveComponent->bIgnoreRadialForce;
+		}
+
+		bool GetIgnoreRadialImpulse(UPrimitiveComponent* PrimitiveComponent) {
+			return PrimitiveComponent->bIgnoreRadialImpulse;
+		}
+
 		UMaterialInstanceDynamic* GetMaterial(UPrimitiveComponent* PrimitiveComponent, int32 ElementIndex) {
 			return Cast<UMaterialInstanceDynamic>(PrimitiveComponent->GetMaterial(ElementIndex));
 		}
@@ -2297,25 +3099,25 @@ namespace UnrealCLRFramework {
 			PrimitiveComponent->SetPhysicsLinearVelocity(*Velocity, AddToCurrent, boneName);
 		}
 
-		static void SetPhysicsAngularVelocityInDegrees(UPrimitiveComponent* PrimitiveComponent, const Vector3* AngularVelocity, bool AddToCurrent, const char* BoneName) {
+		void SetPhysicsAngularVelocityInDegrees(UPrimitiveComponent* PrimitiveComponent, const Vector3* AngularVelocity, bool AddToCurrent, const char* BoneName) {
 			UNREALCLR_SET_BONE_NAME(BoneName);
 
 			PrimitiveComponent->SetPhysicsAngularVelocityInDegrees(*AngularVelocity, AddToCurrent, boneName);
 		}
 
-		static void SetPhysicsAngularVelocityInRadians(UPrimitiveComponent* PrimitiveComponent, const Vector3* AngularVelocity, bool AddToCurrent, const char* BoneName) {
+		void SetPhysicsAngularVelocityInRadians(UPrimitiveComponent* PrimitiveComponent, const Vector3* AngularVelocity, bool AddToCurrent, const char* BoneName) {
 			UNREALCLR_SET_BONE_NAME(BoneName);
 
 			PrimitiveComponent->SetPhysicsAngularVelocityInRadians(*AngularVelocity, AddToCurrent, boneName);
 		}
 
-		static void SetPhysicsMaxAngularVelocityInDegrees(UPrimitiveComponent* PrimitiveComponent, float MaxAngularVelocity, bool AddToCurrent, const char* BoneName) {
+		void SetPhysicsMaxAngularVelocityInDegrees(UPrimitiveComponent* PrimitiveComponent, float MaxAngularVelocity, bool AddToCurrent, const char* BoneName) {
 			UNREALCLR_SET_BONE_NAME(BoneName);
 
 			PrimitiveComponent->SetPhysicsMaxAngularVelocityInDegrees(MaxAngularVelocity, AddToCurrent, boneName);
 		}
 
-		static void SetPhysicsMaxAngularVelocityInRadians(UPrimitiveComponent* PrimitiveComponent, float MaxAngularVelocity, bool AddToCurrent, const char* BoneName) {
+		void SetPhysicsMaxAngularVelocityInRadians(UPrimitiveComponent* PrimitiveComponent, float MaxAngularVelocity, bool AddToCurrent, const char* BoneName) {
 			UNREALCLR_SET_BONE_NAME(BoneName);
 
 			PrimitiveComponent->SetPhysicsMaxAngularVelocityInRadians(MaxAngularVelocity, AddToCurrent, boneName);
@@ -2331,6 +3133,14 @@ namespace UnrealCLRFramework {
 
 		void SetOwnerNoSee(UPrimitiveComponent* PrimitiveComponent, bool Value) {
 			PrimitiveComponent->bOwnerNoSee = Value;
+		}
+
+		void SetIgnoreRadialForce(UPrimitiveComponent* PrimitiveComponent, bool Value) {
+			PrimitiveComponent->bIgnoreRadialForce = Value;
+		}
+
+		void SetIgnoreRadialImpulse(UPrimitiveComponent* PrimitiveComponent, bool Value) {
+			PrimitiveComponent->bIgnoreRadialImpulse = Value;
 		}
 
 		void SetMaterial(UPrimitiveComponent* PrimitiveComponent, int32 ElementIndex, UMaterialInterface* Material) {
@@ -2504,6 +3314,49 @@ namespace UnrealCLRFramework {
 		}
 	}
 
+	namespace TextRenderComponent {
+		void SetFont(UTextRenderComponent* TextRenderComponent, UFont* Value) {
+			TextRenderComponent->SetFont(Value);
+		}
+
+		void SetText(UTextRenderComponent* TextRenderComponent, const char* Value) {
+			TextRenderComponent->SetText(FText::FromString(FString(ANSI_TO_TCHAR(Value))));
+		}
+
+		void SetTextMaterial(UTextRenderComponent* TextRenderComponent, UMaterialInterface* Material) {
+			TextRenderComponent->SetTextMaterial(Material);
+		}
+
+		void SetTextRenderColor(UTextRenderComponent* TextRenderComponent, Color Value) {
+			TextRenderComponent->SetTextRenderColor(Value);
+		}
+
+		void SetHorizontalAlignment(UTextRenderComponent* TextRenderComponent, HorizontalTextAligment Value) {
+			TextRenderComponent->SetHorizontalAlignment(Value);
+		}
+
+		void SetHorizontalSpacingAdjustment(UTextRenderComponent* TextRenderComponent, float Value) {
+			TextRenderComponent->SetHorizSpacingAdjust(Value);
+		}
+
+		void SetVerticalAlignment(UTextRenderComponent* TextRenderComponent, VerticalTextAligment Value) {
+			TextRenderComponent->SetVerticalAlignment(Value);
+		}
+
+		void SetVerticalSpacingAdjustment(UTextRenderComponent* TextRenderComponent, float Value) {
+			TextRenderComponent->SetVertSpacingAdjust(Value);
+		}
+
+		void SetScale(UTextRenderComponent* TextRenderComponent, const Vector2* Value) {
+			TextRenderComponent->SetXScale(Value->X);
+			TextRenderComponent->SetYScale(Value->Y);
+		}
+
+		void SetWorldSize(UTextRenderComponent* TextRenderComponent, float Value) {
+			TextRenderComponent->SetWorldSize(Value);
+		}
+	}
+
 	namespace LightComponentBase {
 		float GetIntensity(ULightComponentBase* LightComponentBase) {
 			return LightComponentBase->Intensity;
@@ -2528,13 +3381,13 @@ namespace UnrealCLRFramework {
 		}
 	}
 
-	namespace DirectionalLightComponent {
-
-	}
-
 	namespace MotionControllerComponent {
 		bool IsTracked(UMotionControllerComponent* MotionControllerComponent) {
 			return MotionControllerComponent->IsTracked();
+		}
+
+		bool GetDisplayDeviceModel(UMotionControllerComponent* MotionControllerComponent) {
+			return MotionControllerComponent->bDisplayDeviceModel;
 		}
 
 		bool GetDisableLowLatencyUpdate(UMotionControllerComponent* MotionControllerComponent) {
@@ -2543,6 +3396,10 @@ namespace UnrealCLRFramework {
 
 		ControllerHand GetTrackingSource(UMotionControllerComponent* MotionControllerComponent) {
 			return MotionControllerComponent->GetTrackingSource();
+		}
+
+		void SetDisplayDeviceModel(UMotionControllerComponent* MotionControllerComponent, bool Value) {
+			MotionControllerComponent->bDisplayDeviceModel = true;
 		}
 
 		void SetDisableLowLatencyUpdate(UMotionControllerComponent* MotionControllerComponent, bool Value) {
@@ -2555,6 +3412,18 @@ namespace UnrealCLRFramework {
 
 		void SetTrackingMotionSource(UMotionControllerComponent* MotionControllerComponent, const char* Source) {
 			MotionControllerComponent->SetTrackingMotionSource(FName(ANSI_TO_TCHAR(Source)));
+		}
+
+		void SetAssociatedPlayerIndex(UMotionControllerComponent* MotionControllerComponent, int32 PlayerIndex) {
+			MotionControllerComponent->SetAssociatedPlayerIndex(PlayerIndex);
+		}
+
+		void SetCustomDisplayMesh(UMotionControllerComponent* MotionControllerComponent, UStaticMesh* StaticMesh) {
+			MotionControllerComponent->SetCustomDisplayMesh(StaticMesh);
+		}
+
+		void SetDisplayModelSource(UMotionControllerComponent* MotionControllerComponent, const char* Source) {
+			MotionControllerComponent->SetDisplayModelSource(FName(ANSI_TO_TCHAR(Source)));
 		}
 	}
 
@@ -2593,12 +3462,38 @@ namespace UnrealCLRFramework {
 			return result;
 		}
 
-		int32 AddInstance(UInstancedStaticMeshComponent* InstancedStaticMeshComponent, const Transform* InstanceTransform) {
-			return InstancedStaticMeshComponent->AddInstance(*InstanceTransform);
+		void AddInstance(UInstancedStaticMeshComponent* InstancedStaticMeshComponent, const Transform* InstanceTransform) {
+			InstancedStaticMeshComponent->AddInstance(*InstanceTransform);
+		}
+
+		void AddInstances(UInstancedStaticMeshComponent* InstancedStaticMeshComponent, int32 EndInstanceIndex, const Transform InstanceTransforms[]) {
+			static TArray<FTransform> instanceTransforms;
+
+			instanceTransforms.Reserve(EndInstanceIndex + 1);
+			instanceTransforms.Reset();
+
+			for (int32 i = 0; i < EndInstanceIndex; i++) {
+				instanceTransforms.Add(InstanceTransforms[i]);
+			}
+
+			InstancedStaticMeshComponent->AddInstances(instanceTransforms, false);
 		}
 
 		bool UpdateInstanceTransform(UInstancedStaticMeshComponent* InstancedStaticMeshComponent, int32 InstanceIndex, const Transform* InstanceTransform, bool WorldSpace, bool MarkRenderStateDirty, bool Teleport) {
 			return InstancedStaticMeshComponent->UpdateInstanceTransform(InstanceIndex, *InstanceTransform, WorldSpace, MarkRenderStateDirty, Teleport);
+		}
+
+		bool BatchUpdateInstanceTransforms(UInstancedStaticMeshComponent* InstancedStaticMeshComponent, int32 StartInstanceIndex, int32 EndInstanceIndex, const Transform InstanceTransforms[], bool WorldSpace, bool MarkRenderStateDirty, bool Teleport) {
+			static TArray<FTransform> instanceTransforms;
+
+			instanceTransforms.Reserve(EndInstanceIndex + 1);
+			instanceTransforms.Reset();
+
+			for (int32 i = 0; i < EndInstanceIndex; i++) {
+				instanceTransforms.Add(InstanceTransforms[i]);
+			}
+
+			return InstancedStaticMeshComponent->BatchUpdateInstancesTransforms(StartInstanceIndex, instanceTransforms, WorldSpace, MarkRenderStateDirty, Teleport);
 		}
 
 		bool RemoveInstance(UInstancedStaticMeshComponent* InstancedStaticMeshComponent, int32 InstanceIndex) {
@@ -2607,6 +3502,16 @@ namespace UnrealCLRFramework {
 
 		void ClearInstances(UInstancedStaticMeshComponent* InstancedStaticMeshComponent) {
 			InstancedStaticMeshComponent->ClearInstances();
+		}
+	}
+
+	namespace HierarchicalInstancedStaticMeshComponent {
+		bool GetDisableCollision(UHierarchicalInstancedStaticMeshComponent* HierarchicalInstancedStaticMeshComponent) {
+			return HierarchicalInstancedStaticMeshComponent->bDisableCollision;
+		}
+
+		void SetDisableCollision(UHierarchicalInstancedStaticMeshComponent* HierarchicalInstancedStaticMeshComponent, bool Value) {
+			HierarchicalInstancedStaticMeshComponent->bDisableCollision = Value;
 		}
 	}
 
@@ -2669,6 +3574,249 @@ namespace UnrealCLRFramework {
 
 		void Stop(USkeletalMeshComponent* SkeletalMeshComponent) {
 			SkeletalMeshComponent->Stop();
+		}
+	}
+
+	namespace SplineComponent {
+		bool IsClosedLoop(USplineComponent* SplineComponent) {
+			return SplineComponent->IsClosedLoop();
+		}
+
+		float GetDuration(USplineComponent* SplineComponent) {
+			return SplineComponent->Duration;
+		}
+
+		SplinePointType GetSplinePointType(USplineComponent* SplineComponent, int32 PointIndex) {
+			return SplineComponent->GetSplinePointType(PointIndex);
+		}
+
+		int32 GetSplinePointsNumber(USplineComponent* SplineComponent) {
+			return SplineComponent->GetNumberOfSplinePoints();
+		}
+
+		int32 GetSplineSegmentsNumber(USplineComponent* SplineComponent) {
+			return SplineComponent->GetNumberOfSplineSegments();
+		}
+
+		void GetTangentAtDistanceAlongSpline(USplineComponent* SplineComponent, float Distance, SplineCoordinateSpace CoordinateSpace, Vector3* Value) {
+			*Value = SplineComponent->GetTangentAtDistanceAlongSpline(Distance, CoordinateSpace);
+		}
+
+		void GetTangentAtSplinePoint(USplineComponent* SplineComponent, int32 PointIndex, SplineCoordinateSpace CoordinateSpace, Vector3* Value) {
+			*Value = SplineComponent->GetTangentAtSplinePoint(PointIndex, CoordinateSpace);
+		}
+
+		void GetTangentAtTime(USplineComponent* SplineComponent, float Time, SplineCoordinateSpace CoordinateSpace, bool UseConstantVelocity, Vector3* Value) {
+			*Value = SplineComponent->GetTangentAtTime(Time, CoordinateSpace, UseConstantVelocity);
+		}
+
+		void GetTransformAtDistanceAlongSpline(USplineComponent* SplineComponent, float Distance, SplineCoordinateSpace CoordinateSpace, Transform* Value) {
+			*Value = SplineComponent->GetTransformAtDistanceAlongSpline(Distance, CoordinateSpace);
+		}
+
+		void GetTransformAtSplinePoint(USplineComponent* SplineComponent, int32 PointIndex, SplineCoordinateSpace CoordinateSpace, bool UseScale, Transform* Value) {
+			*Value = SplineComponent->GetTransformAtSplinePoint(PointIndex, CoordinateSpace, UseScale);
+		}
+
+		void GetArriveTangentAtSplinePoint(USplineComponent* SplineComponent, int32 PointIndex, SplineCoordinateSpace CoordinateSpace, Vector3* Value) {
+			*Value = SplineComponent->GetArriveTangentAtSplinePoint(PointIndex, CoordinateSpace);
+		}
+
+		void GetDefaultUpVector(USplineComponent* SplineComponent, SplineCoordinateSpace CoordinateSpace, Vector3* Value) {
+			*Value = SplineComponent->GetDefaultUpVector(CoordinateSpace);
+		}
+
+		void GetDirectionAtDistanceAlongSpline(USplineComponent* SplineComponent, float Distance, SplineCoordinateSpace CoordinateSpace, Vector3* Value) {
+			*Value = SplineComponent->GetDirectionAtDistanceAlongSpline(Distance, CoordinateSpace);
+		}
+
+		void GetDirectionAtSplinePoint(USplineComponent* SplineComponent, int32 PointIndex, SplineCoordinateSpace CoordinateSpace, Vector3* Value) {
+			*Value = SplineComponent->GetDirectionAtSplinePoint(PointIndex, CoordinateSpace);
+		}
+
+		void GetDirectionAtTime(USplineComponent* SplineComponent, float Time, SplineCoordinateSpace CoordinateSpace, bool UseConstantVelocity, Vector3* Value) {
+			*Value = SplineComponent->GetDirectionAtTime(Time, CoordinateSpace, UseConstantVelocity);
+		}
+
+		float GetDistanceAlongSplineAtSplinePoint(USplineComponent* SplineComponent, int32 PointIndex) {
+			return SplineComponent->GetDistanceAlongSplineAtSplinePoint(PointIndex);
+		}
+
+		void GetLeaveTangentAtSplinePoint(USplineComponent* SplineComponent, int32 PointIndex, SplineCoordinateSpace CoordinateSpace, Vector3* Value) {
+			*Value = SplineComponent->GetLeaveTangentAtSplinePoint(PointIndex, CoordinateSpace);
+		}
+
+		void GetLocationAndTangentAtSplinePoint(USplineComponent* SplineComponent, int32 PointIndex, SplineCoordinateSpace CoordinateSpace, Vector3* Location, Vector3* Tangent) {
+			FVector location, tangent;
+
+			SplineComponent->GetLocationAndTangentAtSplinePoint(PointIndex, location, tangent, CoordinateSpace);
+
+			*Location = location;
+			*Tangent = tangent;
+		}
+
+		void GetLocationAtDistanceAlongSpline(USplineComponent* SplineComponent, float Distance, SplineCoordinateSpace CoordinateSpace, Vector3* Value) {
+			*Value = SplineComponent->GetLocationAtDistanceAlongSpline(Distance, CoordinateSpace);
+		}
+
+		void GetLocationAtSplinePoint(USplineComponent* SplineComponent, int32 PointIndex, SplineCoordinateSpace CoordinateSpace, Vector3* Value) {
+			*Value = SplineComponent->GetLocationAtSplinePoint(PointIndex, CoordinateSpace);
+		}
+
+		void GetLocationAtTime(USplineComponent* SplineComponent, float Time, SplineCoordinateSpace CoordinateSpace, Vector3* Value) {
+			*Value = SplineComponent->GetLocationAtTime(Time, CoordinateSpace);
+		}
+
+		void GetRightVectorAtDistanceAlongSpline(USplineComponent* SplineComponent, float Distance, SplineCoordinateSpace CoordinateSpace, Vector3* Value) {
+			*Value = SplineComponent->GetRightVectorAtDistanceAlongSpline(Distance, CoordinateSpace);
+		}
+
+		void GetRightVectorAtSplinePoint(USplineComponent* SplineComponent, int32 PointIndex, SplineCoordinateSpace CoordinateSpace, Vector3* Value) {
+			*Value = SplineComponent->GetRightVectorAtSplinePoint(PointIndex, CoordinateSpace);
+		}
+
+		void GetRightVectorAtTime(USplineComponent* SplineComponent, float Time, SplineCoordinateSpace CoordinateSpace, bool UseConstantVelocity, Vector3* Value) {
+			*Value = SplineComponent->GetRightVectorAtTime(Time, CoordinateSpace, UseConstantVelocity);
+		}
+
+		float GetRollAtDistanceAlongSpline(USplineComponent* SplineComponent, float Distance, SplineCoordinateSpace CoordinateSpace) {
+			return SplineComponent->GetRollAtDistanceAlongSpline(Distance, CoordinateSpace);
+		}
+
+		float GetRollAtSplinePoint(USplineComponent* SplineComponent, int32 PointIndex, SplineCoordinateSpace CoordinateSpace) {
+			return SplineComponent->GetRollAtSplinePoint(PointIndex, CoordinateSpace);
+		}
+
+		float GetRollAtTime(USplineComponent* SplineComponent, float Time, SplineCoordinateSpace CoordinateSpace, bool UseConstantVelocity) {
+			return SplineComponent->GetRollAtTime(Time, CoordinateSpace, UseConstantVelocity);
+		}
+
+		void GetRotationAtDistanceAlongSpline(USplineComponent* SplineComponent, float Distance, SplineCoordinateSpace CoordinateSpace, Quaternion* Value) {
+			*Value = SplineComponent->GetRotationAtDistanceAlongSpline(Distance, CoordinateSpace).Quaternion();
+		}
+
+		void GetRotationAtSplinePoint(USplineComponent* SplineComponent, int32 PointIndex, SplineCoordinateSpace CoordinateSpace, Quaternion* Value) {
+			*Value = SplineComponent->GetRotationAtSplinePoint(PointIndex, CoordinateSpace).Quaternion();
+		}
+
+		void GetRotationAtTime(USplineComponent* SplineComponent, float Time, SplineCoordinateSpace CoordinateSpace, bool UseConstantVelocity, Quaternion* Value) {
+			*Value = SplineComponent->GetRotationAtTime(Time, CoordinateSpace, UseConstantVelocity).Quaternion();
+		}
+
+		void GetScaleAtDistanceAlongSpline(USplineComponent* SplineComponent, float Distance, Vector3* Value) {
+			*Value = SplineComponent->GetScaleAtDistanceAlongSpline(Distance);
+		}
+
+		void GetScaleAtSplinePoint(USplineComponent* SplineComponent, int32 PointIndex, Vector3* Value) {
+			*Value = SplineComponent->GetScaleAtSplinePoint(PointIndex);
+		}
+
+		void GetScaleAtTime(USplineComponent* SplineComponent, float Time, bool UseConstantVelocity, Vector3* Value) {
+			*Value = SplineComponent->GetScaleAtTime(Time, UseConstantVelocity);
+		}
+
+		float GetSplineLength(USplineComponent* SplineComponent) {
+			return SplineComponent->GetSplineLength();
+		}
+
+		void GetTransformAtTime(USplineComponent* SplineComponent, float Time, SplineCoordinateSpace CoordinateSpace, bool UseConstantVelocity, bool UseScale, Transform* Value) {
+			*Value = SplineComponent->GetTransformAtTime(Time, CoordinateSpace, UseConstantVelocity, UseScale);
+		}
+
+		void GetUpVectorAtDistanceAlongSpline(USplineComponent* SplineComponent, float Distance, SplineCoordinateSpace CoordinateSpace, Vector3* Value) {
+			*Value = SplineComponent->GetUpVectorAtDistanceAlongSpline(Distance, CoordinateSpace);
+		}
+
+		void GetUpVectorAtSplinePoint(USplineComponent* SplineComponent, int32 PointIndex, SplineCoordinateSpace CoordinateSpace, Vector3* Value) {
+			*Value = SplineComponent->GetUpVectorAtSplinePoint(PointIndex, CoordinateSpace);
+		}
+
+		void GetUpVectorAtTime(USplineComponent* SplineComponent, float Time, SplineCoordinateSpace CoordinateSpace, bool UseConstantVelocity, Vector3* Value) {
+			*Value = SplineComponent->GetUpVectorAtTime(Time, CoordinateSpace, UseConstantVelocity);
+		}
+
+		void SetDuration(USplineComponent* SplineComponent, float Value) {
+			SplineComponent->Duration = Value;
+		}
+
+		void SetSplinePointType(USplineComponent* SplineComponent, int32 PointIndex, SplinePointType Type, bool UpdateSpline) {
+			SplineComponent->SetSplinePointType(PointIndex, Type, UpdateSpline);
+		}
+
+		void SetClosedLoop(USplineComponent* SplineComponent, bool Value, bool UpdateSpline) {
+			SplineComponent->SetClosedLoop(Value, UpdateSpline);
+		}
+
+		void SetDefaultUpVector(USplineComponent* SplineComponent, const Vector3* Value, SplineCoordinateSpace CoordinateSpace) {
+			SplineComponent->SetDefaultUpVector(*Value, CoordinateSpace);
+		}
+
+		void SetLocationAtSplinePoint(USplineComponent* SplineComponent, int32 PointIndex, const Vector3* Value, SplineCoordinateSpace CoordinateSpace, bool UpdateSpline) {
+			SplineComponent->SetLocationAtSplinePoint(PointIndex, *Value, CoordinateSpace, UpdateSpline);
+		}
+
+		void SetTangentAtSplinePoint(USplineComponent* SplineComponent, int32 PointIndex, const Vector3* Tangent, SplineCoordinateSpace CoordinateSpace, bool UpdateSpline) {
+			SplineComponent->SetTangentAtSplinePoint(PointIndex, *Tangent, CoordinateSpace, UpdateSpline);
+		}
+
+		void SetTangentsAtSplinePoint(USplineComponent* SplineComponent, int32 PointIndex, const Vector3* ArriveTangent, const Vector3* LeaveTangent, SplineCoordinateSpace CoordinateSpace, bool UpdateSpline) {
+			SplineComponent->SetTangentsAtSplinePoint(PointIndex, *ArriveTangent, *LeaveTangent, CoordinateSpace, UpdateSpline);
+		}
+
+		void SetUpVectorAtSplinePoint(USplineComponent* SplineComponent, int32 PointIndex, const Vector3* UpVector, SplineCoordinateSpace CoordinateSpace, bool UpdateSpline) {
+			SplineComponent->SetUpVectorAtSplinePoint(PointIndex, *UpVector, CoordinateSpace, UpdateSpline);
+		}
+
+		void AddSplinePoint(USplineComponent* SplineComponent, const Vector3* Location, SplineCoordinateSpace CoordinateSpace, bool UpdateSpline) {
+			SplineComponent->AddSplinePoint(*Location, CoordinateSpace, UpdateSpline);
+		}
+
+		void AddSplinePointAtIndex(USplineComponent* SplineComponent, const Vector3* Location, int32 PointIndex, SplineCoordinateSpace CoordinateSpace, bool UpdateSpline) {
+			SplineComponent->AddSplinePointAtIndex(*Location, PointIndex, CoordinateSpace, UpdateSpline);
+		}
+
+		void ClearSplinePoints(USplineComponent* SplineComponent, bool UpdateSpline) {
+			SplineComponent->ClearSplinePoints(UpdateSpline);
+		}
+
+		void FindDirectionClosestToWorldLocation(USplineComponent* SplineComponent, const Vector3* Location, SplineCoordinateSpace CoordinateSpace, Vector3* Value) {
+			*Value = SplineComponent->FindDirectionClosestToWorldLocation(*Location, CoordinateSpace);
+		}
+
+		void FindLocationClosestToWorldLocation(USplineComponent* SplineComponent, const Vector3* Location, SplineCoordinateSpace CoordinateSpace, Vector3* Value) {
+			*Value = SplineComponent->FindLocationClosestToWorldLocation(*Location, CoordinateSpace);
+		}
+
+		void FindUpVectorClosestToWorldLocation(USplineComponent* SplineComponent, const Vector3* Location, SplineCoordinateSpace CoordinateSpace, Vector3* Value) {
+			*Value = SplineComponent->FindUpVectorClosestToWorldLocation(*Location, CoordinateSpace);
+		}
+
+		void FindRightVectorClosestToWorldLocation(USplineComponent* SplineComponent, const Vector3* Location, SplineCoordinateSpace CoordinateSpace, Vector3* Value) {
+			*Value = SplineComponent->FindRightVectorClosestToWorldLocation(*Location, CoordinateSpace);
+		}
+
+		float FindRollClosestToWorldLocation(USplineComponent* SplineComponent, const Vector3* Location, SplineCoordinateSpace CoordinateSpace) {
+			return SplineComponent->FindRollClosestToWorldLocation(*Location, CoordinateSpace);
+		}
+
+		void FindScaleClosestToWorldLocation(USplineComponent* SplineComponent, const Vector3* Location, Vector3* Value) {
+			*Value = SplineComponent->FindScaleClosestToWorldLocation(*Location);
+		}
+
+		void FindTangentClosestToWorldLocation(USplineComponent* SplineComponent, const Vector3* Location, SplineCoordinateSpace CoordinateSpace, Vector3* Value) {
+			*Value = SplineComponent->FindTangentClosestToWorldLocation(*Location, CoordinateSpace);
+		}
+
+		void FindTransformClosestToWorldLocation(USplineComponent* SplineComponent, const Vector3* Location, SplineCoordinateSpace CoordinateSpace, bool UseScale, Transform* Value) {
+			*Value = SplineComponent->FindTransformClosestToWorldLocation(*Location, CoordinateSpace, UseScale);
+		}
+
+		void RemoveSplinePoint(USplineComponent* SplineComponent, int32 PointIndex, bool UpdateSpline) {
+			SplineComponent->RemoveSplinePoint(PointIndex, UpdateSpline);
+		}
+
+		void UpdateSpline(USplineComponent* SplineComponent) {
+			SplineComponent->UpdateSpline();
 		}
 	}
 
@@ -2745,6 +3893,10 @@ namespace UnrealCLRFramework {
 	namespace MaterialInstance {
 		bool IsChildOf(UMaterialInstance* MaterialInstance, UMaterialInterface* Material) {
 			return MaterialInstance->IsChildOf(Material);
+		}
+
+		UMaterialInstanceDynamic* GetParent(UMaterialInstance* MaterialInstance) {
+			return UMaterialInstanceDynamic::Create(MaterialInstance->Parent, MaterialInstance);
 		}
 	}
 

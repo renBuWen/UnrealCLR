@@ -2,7 +2,7 @@
 ## PrimitiveComponent Class
 An abstract component that contains or generates some sort of geometry, generally to be rendered or used as collision data  
 ```csharp
-public abstract class PrimitiveComponent : SceneComponent
+public abstract class PrimitiveComponent : UnrealEngine.Framework.SceneComponent
 ```
 Inheritance [System.Object](https://docs.microsoft.com/en-us/dotnet/api/System.Object 'System.Object') &#129106; [ActorComponent](./ActorComponent.md 'UnrealEngine.Framework.ActorComponent') &#129106; [SceneComponent](./SceneComponent.md 'UnrealEngine.Framework.SceneComponent') &#129106; PrimitiveComponent  
 
@@ -10,9 +10,13 @@ Derived
 &#8627; [MeshComponent](./MeshComponent.md 'UnrealEngine.Framework.MeshComponent')  
 &#8627; [MotionControllerComponent](./MotionControllerComponent.md 'UnrealEngine.Framework.MotionControllerComponent')  
 &#8627; [ShapeComponent](./ShapeComponent.md 'UnrealEngine.Framework.ShapeComponent')  
+&#8627; [SplineComponent](./SplineComponent.md 'UnrealEngine.Framework.SplineComponent')  
+&#8627; [TextRenderComponent](./TextRenderComponent.md 'UnrealEngine.Framework.TextRenderComponent')  
 ### Properties
 - [AngularDamping](./PrimitiveComponent-AngularDamping.md 'UnrealEngine.Framework.PrimitiveComponent.AngularDamping')
 - [CastShadow](./PrimitiveComponent-CastShadow.md 'UnrealEngine.Framework.PrimitiveComponent.CastShadow')
+- [IgnoreRadialForce](./PrimitiveComponent-IgnoreRadialForce.md 'UnrealEngine.Framework.PrimitiveComponent.IgnoreRadialForce')
+- [IgnoreRadialImpulse](./PrimitiveComponent-IgnoreRadialImpulse.md 'UnrealEngine.Framework.PrimitiveComponent.IgnoreRadialImpulse')
 - [IsGravityEnabled](./PrimitiveComponent-IsGravityEnabled.md 'UnrealEngine.Framework.PrimitiveComponent.IsGravityEnabled')
 - [LinearDamping](./PrimitiveComponent-LinearDamping.md 'UnrealEngine.Framework.PrimitiveComponent.LinearDamping')
 - [Mass](./PrimitiveComponent-Mass.md 'UnrealEngine.Framework.PrimitiveComponent.Mass')
@@ -33,6 +37,7 @@ Derived
 - [ClearMoveIgnoreActors()](./PrimitiveComponent-ClearMoveIgnoreActors().md 'UnrealEngine.Framework.PrimitiveComponent.ClearMoveIgnoreActors()')
 - [ClearMoveIgnoreComponents()](./PrimitiveComponent-ClearMoveIgnoreComponents().md 'UnrealEngine.Framework.PrimitiveComponent.ClearMoveIgnoreComponents()')
 - [CreateAndSetMaterialInstanceDynamic(int)](./PrimitiveComponent-CreateAndSetMaterialInstanceDynamic(int).md 'UnrealEngine.Framework.PrimitiveComponent.CreateAndSetMaterialInstanceDynamic(int)')
+- [ForEachOverlappingComponent&lt;T&gt;(System.Action&lt;T&gt;)](./PrimitiveComponent-ForEachOverlappingComponent-T-(Action-T-).md 'UnrealEngine.Framework.PrimitiveComponent.ForEachOverlappingComponent&lt;T&gt;(System.Action&lt;T&gt;)')
 - [GetDistanceToCollision(System.Numerics.Vector3, System.Numerics.Vector3)](./PrimitiveComponent-GetDistanceToCollision(Vector3_Vector3).md 'UnrealEngine.Framework.PrimitiveComponent.GetDistanceToCollision(System.Numerics.Vector3, System.Numerics.Vector3)')
 - [GetMaterial(int)](./PrimitiveComponent-GetMaterial(int).md 'UnrealEngine.Framework.PrimitiveComponent.GetMaterial(int)')
 - [GetPhysicsAngularVelocityInDegrees(System.Numerics.Vector3, string)](./PrimitiveComponent-GetPhysicsAngularVelocityInDegrees(Vector3_string).md 'UnrealEngine.Framework.PrimitiveComponent.GetPhysicsAngularVelocityInDegrees(System.Numerics.Vector3, string)')
